@@ -1588,14 +1588,320 @@ Qed.
 (* 10. The exported automaton                                             *)
 (* ====================================================================== *)
 
+(* ---------------------------------------------------------------------- *)
+(* Merging of equivalent locations of the exported automaton              *)
+
+(* The split of Section 8 adds a dedicated copy of the initial location,
+   without invariant.  When the initial location has a trivial invariant,
+   the two locations are equivalent.  In general, [q] is merged into [p]
+   when they have the same acceptance status, equivalent invariants, and the
+   same outgoing transitions, targets being compared after the redirection
+   of [q] to [p]. *)
+
+Definition dc_dec : forall a b : dconstraint, {a = b} + {a <> b}.
+Proof.
+  decide equality; first [apply Req_EM_T | apply clock_eq_dec | apply cc_dec].
+Defined.
+
+Definition dconj_dec : forall a b : dconj, {a = b} + {a <> b} :=
+  list_eq_dec dc_dec.
+
+Definition cr_dec : forall a b : Clock root * R, {a = b} + {a <> b}.
+Proof. decide equality; first [apply Req_EM_T | apply clock_eq_dec]. Defined.
+
+Definition oinv_dec : forall a b : option (list uinv), {a = b} + {a <> b}.
+Proof. decide equality. apply (list_eq_dec (list_eq_dec cr_dec)). Defined.
+
+(* An invariant with an empty disjunct is true: it is normalized to [None]. *)
+Definition inv_norm (I : option (list uinv)) : option (list uinv) :=
+  match I with
+  | Some Us => if existsb (fun U => match U with [] => true | _ => false end) Us
+               then None else Some Us
+  | None => None
+  end.
+
+Lemma inv_norm_holds :
+  forall I v, dinv_holds (inv_norm I) v <-> dinv_holds I v.
+Proof.
+  intros [Us|] v; simpl; [|tauto].
+  destruct (existsb (fun U => match U with [] => true | _ => false end) Us) eqn:E;
+    simpl; [|tauto].
+  split; intros _; [|exact I].
+  apply existsb_exists in E. destruct E as [U [HU EU]].
+  destruct U as [|? ?]; [|discriminate].
+  exists []. split; [exact HU | constructor].
+Qed.
+
+Lemma inv_norm_during :
+  forall (rho : ext_word root) i I, dinv_during rho i (inv_norm I) <-> dinv_during rho i I.
+Proof.
+  intros rho i I. unfold dinv_during. split; intros H dl Hdl.
+  - apply inv_norm_holds. apply H. exact Hdl.
+  - apply inv_norm_holds. apply H. exact Hdl.
+Qed.
+
+Definition dred_trans (p q : nat) (t : dtrans) : dtrans :=
+  {| dt_src := dt_src t; dt_label := dt_label t; dt_guard := dt_guard t;
+     dt_resets := dt_resets t; dt_tgt := red p q (dt_tgt t) |}.
+
+(* Labels, disjuncts of guards, and resets are compared as sets. *)
+Definition dsim (p q : nat) (t t' : dtrans) : bool :=
+  set_eqb alit_eq_dec (dt_label t) (dt_label t') &&
+  set_eqb dconj_dec (dt_guard t) (dt_guard t') &&
+  set_eqb (@clock_eq_dec root) (dt_resets t) (dt_resets t') &&
+  Nat.eqb (red p q (dt_tgt t)) (red p q (dt_tgt t')).
+
+Lemma denabled_set :
+  forall (rho : ext_word root) i (t t' : dtrans),
+    incl (dt_label t') (dt_label t) -> incl (dt_guard t) (dt_guard t') ->
+    (forall x, In x (dt_resets t) <-> In x (dt_resets t')) ->
+    dtrans_enabled rho i t -> dtrans_enabled rho i t'.
+Proof.
+  intros rho i t t' Hl Hg Hr [H1 [H2 H3]]. unfold dtrans_enabled.
+  split; [exact (label_incl Hl H1)|]. split.
+  - destruct H2 as [c [Hc Hh]]. exists c. split; [apply Hg; exact Hc | exact Hh].
+  - intro x. rewrite (H3 x). apply Hr.
+Qed.
+
+Lemma denabled_ext :
+  forall (rho : ext_word root) i (t t' : dtrans),
+    dt_label t = dt_label t' -> dt_guard t = dt_guard t' ->
+    dt_resets t = dt_resets t' ->
+    dtrans_enabled rho i t -> dtrans_enabled rho i t'.
+Proof.
+  intros rho i t t' El Eg Er [H1 [H2 H3]]. unfold dtrans_enabled.
+  rewrite <- El, <- Eg, <- Er. split; [exact H1|]. split; assumption.
+Qed.
+
+Lemma dsim_spec :
+  forall p q t t', dsim p q t t' = true ->
+    (forall (rho : ext_word root) i,
+       dtrans_enabled rho i t -> dtrans_enabled rho i t') /\
+    (forall (rho : ext_word root) i,
+       dtrans_enabled rho i t' -> dtrans_enabled rho i t) /\
+    red p q (dt_tgt t) = red p q (dt_tgt t').
+Proof.
+  intros p q t t' H. unfold dsim, set_eqb in H.
+  repeat rewrite andb_true_iff in H.
+  destruct H as [[[[L1 L2] [G1 G2]] [R1 R2]] H4].
+  apply set_incl_true in L1. apply set_incl_true in L2.
+  apply set_incl_true in G1. apply set_incl_true in G2.
+  apply set_incl_true in R1. apply set_incl_true in R2.
+  apply Nat.eqb_eq in H4.
+  split; [|split; [|exact H4]]; intros rho i; apply denabled_set; auto;
+    intro x; split; intro Hx; auto.
+Qed.
+
+Definition dout (D : DTA) (s : nat) : list dtrans :=
+  filter (fun t => Nat.eqb (dt_src t) s) (dta_trans D).
+
+(* Every transition leaving [s] has a similar transition leaving [s']. *)
+Definition dcovers (D : DTA) (p q s s' : nat) : bool :=
+  forallb (fun t => existsb (fun t' => dsim p q t t') (dout D s')) (dout D s).
+
+Lemma dcovers_spec :
+  forall D p q s s', dcovers D p q s s' = true ->
+    forall t, In t (dta_trans D) -> dt_src t = s ->
+      exists t', In t' (dta_trans D) /\ dt_src t' = s' /\ dsim p q t t' = true.
+Proof.
+  intros D p q s s' H t Ht Hs. unfold dcovers in H. rewrite forallb_forall in H.
+  assert (Hin : In t (dout D s)).
+  { unfold dout. apply filter_In. split; [exact Ht|]. apply Nat.eqb_eq. exact Hs. }
+  specialize (H t Hin). apply existsb_exists in H. destruct H as [t' [Ht' E]].
+  unfold dout in Ht'. apply filter_In in Ht'. destruct Ht' as [Ht' Hs'].
+  apply Nat.eqb_eq in Hs'. exists t'. tauto.
+Qed.
+
+Definition dstates_mergeable (D : DTA) (p q : nat) : bool :=
+  negb (Nat.eqb p q) && Nat.ltb p (dta_nstates D) && Nat.ltb q (dta_nstates D) &&
+  Bool.eqb (in_nat p (dta_accepting D)) (in_nat q (dta_accepting D)) &&
+  (if oinv_dec (inv_norm (dta_inv D p)) (inv_norm (dta_inv D q)) then true else false) &&
+  dcovers D p q q p && dcovers D p q p q.
+
+Definition dmerge_states (p q : nat) (D : DTA) : DTA :=
+  {| dta_nstates := dta_nstates D;
+     dta_init := red p q (dta_init D);
+     dta_trans := map (dred_trans p q)
+                    (filter (fun t => negb (Nat.eqb (dt_src t) q)) (dta_trans D));
+     dta_accepting := dta_accepting D;
+     dta_inv := dta_inv D |}.
+
+Lemma dmerge_states_ext :
+  forall D p q, dstates_mergeable D p q = true ->
+    forall rho : ext_word root,
+      DTA_ext_accepts D rho <-> DTA_ext_accepts (dmerge_states p q D) rho.
+Proof.
+  intros D p q Hm rho. unfold dstates_mergeable in Hm.
+  repeat rewrite andb_true_iff in Hm.
+  destruct Hm as [[[[[[Hpq Hp] Hq] Hacc] Hinv] Hqp] Hpq'].
+  apply negb_true_iff, Nat.eqb_neq in Hpq.
+  apply Nat.ltb_lt in Hp. apply Nat.ltb_lt in Hq.
+  apply Bool.eqb_prop in Hacc.
+  destruct (oinv_dec (inv_norm (dta_inv D p)) (inv_norm (dta_inv D q))) as [Einv|];
+    [|discriminate].
+  clear Hinv.
+  assert (Hacc' : In p (dta_accepting D) <-> In q (dta_accepting D)).
+  { rewrite <- !in_nat_iff, Hacc. tauto. }
+  assert (Hbound : forall s, (s < dta_nstates D)%nat -> (red p q s < dta_nstates D)%nat).
+  { intros s Hs. unfold red. destruct (Nat.eqb s q); assumption. }
+  assert (Hinv_red : forall i s,
+             dinv_during rho i (dta_inv D (red p q s)) <-> dinv_during rho i (dta_inv D s)).
+  { intros i s. unfold red. destruct (Nat.eqb s q) eqn:E; [|tauto].
+    apply Nat.eqb_eq in E. subst s.
+    rewrite <- (inv_norm_during rho i (dta_inv D p)), Einv. apply inv_norm_during. }
+  split.
+  - (* D -> merged: replace q by p along the run *)
+    intros [run [Hinit [Hsteps Hbuchi]]].
+    exists (fun i => red p q (run i)). simpl.
+    split; [rewrite Hinit; reflexivity|]. split.
+    + intro i. destruct (Hsteps i) as [Hb [Hi [t [Ht [Hs [Hd Hen]]]]]].
+      split; [exact (Hbound _ Hb)|].
+      split; [apply Hinv_red; exact Hi|].
+      destruct (Nat.eq_dec (run i) q) as [Eq|Nq].
+      * destruct (dcovers_spec Hqp Ht (eq_trans Hs Eq)) as [t' [Ht' [Hs' Hsim]]].
+        destruct (dsim_spec Hsim) as [Hen1 [_ Et]].
+        exists (dred_trans p q t'). split.
+        -- apply in_map. apply filter_In. split; [exact Ht'|].
+           rewrite Hs'. apply negb_true_iff, Nat.eqb_neq. exact Hpq.
+        -- simpl. split; [rewrite Eq, red_q; exact Hs'|].
+           split; [rewrite <- Et, Hd; reflexivity|].
+           exact (denabled_ext (t := t') (t' := dred_trans p q t') eq_refl eq_refl
+                                eq_refl (Hen1 rho i Hen)).
+      * exists (dred_trans p q t). split.
+        -- apply in_map. apply filter_In. split; [exact Ht|].
+           rewrite Hs. apply negb_true_iff, Nat.eqb_neq. exact Nq.
+        -- simpl. split; [rewrite Hs, red_other; [reflexivity | exact Nq]|].
+           split; [rewrite Hd; reflexivity|].
+           exact (denabled_ext (t' := dred_trans p q t) eq_refl eq_refl eq_refl Hen).
+    + intro n. destruct (Hbuchi n) as [j [Hj Ha]]. exists j. split; [exact Hj|].
+      unfold red. destruct (Nat.eqb (run j) q) eqn:E; [|exact Ha].
+      apply Nat.eqb_eq in E. rewrite E in Ha. apply Hacc'. exact Ha.
+  - (* merged -> D: follow the run, choosing in q the twin of a transition of p *)
+    intros [run' [Hinit' [Hsteps' Hbuchi']]].
+    simpl in Hinit', Hsteps', Hbuchi'.
+    assert (Hstep : forall i, exists t, In t (dta_trans D) /\ dt_src t <> q /\
+                      dt_src t = run' i /\ red p q (dt_tgt t) = run' (S i) /\
+                      dtrans_enabled rho i t).
+    { intro i. destruct (Hsteps' i) as [_ [_ [tt [Htt [Hs [Hd Hen]]]]]].
+      apply in_map_iff in Htt. destruct Htt as [t [<- Ht]].
+      apply filter_In in Ht. destruct Ht as [Ht Hnq].
+      apply negb_true_iff, Nat.eqb_neq in Hnq.
+      exists t. split; [exact Ht|]. split; [exact Hnq|]. simpl in *.
+      split; [exact Hs|]. split; [exact Hd|].
+      exact (denabled_ext (t := dred_trans p q t) eq_refl eq_refl eq_refl Hen). }
+    set (P := fun i s (t : dtrans) =>
+                dt_src t = s /\ red p q (dt_tgt t) = run' (S i) /\
+                dtrans_enabled rho i t).
+    set (step := fun i s => match first_such (P i s) (dta_trans D) with
+                            | Some t => Some (dt_tgt t) | None => None end).
+    set (run := build_run step (dta_init D)).
+    assert (Hex : forall i, red p q (run i) = run' i ->
+                    exists t, In t (dta_trans D) /\ P i (run i) t).
+    { intros i Hr. destruct (Hstep i) as [t [Ht [Hnq [Hs [Hd Hen]]]]].
+      destruct (Nat.eq_dec (run i) q) as [Eq|Nq].
+      - assert (Hsp : dt_src t = p) by (rewrite Hs, <- Hr, Eq; apply red_q).
+        destruct (dcovers_spec Hpq' Ht Hsp) as [t' [Ht' [Hs' Hsim]]].
+        destruct (dsim_spec Hsim) as [Hen1 [_ Et]].
+        exists t'. split; [exact Ht'|]. split; [rewrite Eq; exact Hs'|].
+        split; [rewrite <- Et; exact Hd|].
+        exact (Hen1 rho i Hen).
+      - exists t. split; [exact Ht|].
+        split; [rewrite Hs, <- Hr; apply red_other; exact Nq|].
+        split; [exact Hd | exact Hen]. }
+    assert (Hrun : forall i, red p q (run i) = run' i).
+    { induction i as [|i IH].
+      - simpl. rewrite Hinit'. reflexivity.
+      - destruct (first_such_spec (Hex i IH)) as [t [Hf [_ [_ [Hd _]]]]].
+        change (run (S i)) with
+          (match step i (run i) with Some s => s | None => dta_init D end).
+        unfold step. rewrite Hf. exact Hd. }
+    assert (Hrun_q : forall i, run i <> q -> run i = run' i).
+    { intros i Hn. rewrite <- (Hrun i). symmetry. apply red_other. exact Hn. }
+    exists run. split; [reflexivity|]. split.
+    + intro i. split.
+      * destruct (Nat.eq_dec (run i) q) as [Eq|Nq]; [rewrite Eq; exact Hq|].
+        rewrite (Hrun_q i Nq). exact (proj1 (Hsteps' i)).
+      * split.
+        -- apply (Hinv_red i (run i)). rewrite (Hrun i).
+           exact (proj1 (proj2 (Hsteps' i))).
+        -- destruct (first_such_spec (Hex i (Hrun i))) as [t [Hf [Ht [Hs [_ Hen]]]]].
+           exists t. split; [exact Ht|]. split; [exact Hs|].
+           split; [|exact Hen].
+           change (run (S i)) with
+             (match step i (run i) with Some s => s | None => dta_init D end).
+           unfold step. rewrite Hf. reflexivity.
+    + intro n. destruct (Hbuchi' n) as [j [Hj Ha]]. exists j. split; [exact Hj|].
+      destruct (Nat.eq_dec (run j) q) as [Eq|Nq].
+      * rewrite Eq. apply Hacc'. rewrite <- (Hrun j), Eq, red_q in Ha. exact Ha.
+      * rewrite (Hrun_q j Nq). exact Ha.
+Qed.
+
+Definition dtry_merge_states (p q : nat) (D : DTA) : DTA :=
+  if dstates_mergeable D p q then dmerge_states p q D else D.
+
+(* The initial location, which the split duplicates, is merged into the
+   first equivalent location. *)
+Definition dmerge_states_all (D : DTA) : DTA :=
+  fold_left (fun B s => dtry_merge_states s (dta_init B) B)
+            (seq 0 (dta_nstates D)) D.
+
+Lemma dtry_merge_states_ext :
+  forall p q D rho,
+    DTA_ext_accepts D rho <-> DTA_ext_accepts (dtry_merge_states p q D) rho.
+Proof.
+  intros p q D rho. unfold dtry_merge_states.
+  destruct (dstates_mergeable D p q) eqn:E;
+    [apply dmerge_states_ext; exact E | reflexivity].
+Qed.
+
+Theorem dmerge_states_all_accepts :
+  forall D w, DTA_accepts D w <-> DTA_accepts (dmerge_states_all D) w.
+Proof.
+  intros D w. unfold dmerge_states_all.
+  generalize (seq 0 (dta_nstates D)) as ps. intro ps.
+  revert D. induction ps as [|p ps IH]; intro D; simpl; [reflexivity|].
+  rewrite <- IH. unfold DTA_accepts. split.
+  - intros [rho [Hb [Hc Ha]]]. exists rho. split; [exact Hb|]. split; [exact Hc|].
+    apply dtry_merge_states_ext. exact Ha.
+  - intros [rho [Hb [Hc Ha]]]. exists rho. split; [exact Hb|]. split; [exact Hc|].
+    apply (dtry_merge_states_ext p (dta_init D)). exact Ha.
+Qed.
+
+(* The merging keeps the guards of the transitions and the invariants. *)
+Lemma dmerge_states_all_trans :
+  forall D t, In t (dta_trans (dmerge_states_all D)) ->
+    exists t0, In t0 (dta_trans D) /\ dt_guard t = dt_guard t0.
+Proof.
+  intros D. unfold dmerge_states_all.
+  generalize (seq 0 (dta_nstates D)) as ps. intro ps.
+  revert D. induction ps as [|p ps IH]; intros D t Hin; simpl in Hin.
+  - exists t. split; [exact Hin | reflexivity].
+  - destruct (IH _ t Hin) as [t1 [Ht1 Hg1]].
+    unfold dtry_merge_states in Ht1.
+    destruct (dstates_mergeable D p (dta_init D)); [|exists t1; split; assumption].
+    simpl in Ht1. apply in_map_iff in Ht1. destruct Ht1 as [t0 [<- Ht0]].
+    apply filter_In in Ht0. exists t0. split; [exact (proj1 Ht0) | exact Hg1].
+Qed.
+
+Lemma dmerge_states_all_inv :
+  forall D, dta_inv (dmerge_states_all D) = dta_inv D.
+Proof.
+  intros D. unfold dmerge_states_all.
+  generalize (seq 0 (dta_nstates D)) as ps. intro ps.
+  revert D. induction ps as [|p ps IH]; intro D; simpl; [reflexivity|].
+  rewrite IH. unfold dtry_merge_states.
+  destruct (dstates_mergeable D p (dta_init D)); reflexivity.
+Qed.
+
 Definition export (A : TBA root) : DTA :=
-  dprune_all (explode_all (normalize_d (split
-    (normalize_d (merge_transitions (of_tba A)))))).
+  dmerge_states_all (dprune_all (explode_all (normalize_d (split
+    (normalize_d (merge_transitions (of_tba A))))))).
 
 Theorem export_accepts :
   forall A w, TBA_accepts A w <-> DTA_accepts (export A) w.
 Proof.
   intros A w. unfold export.
+  rewrite <- dmerge_states_all_accepts.
   rewrite (of_tba_accepts A w).
   rewrite (merge_transitions_accepts (of_tba A) w).
   rewrite (normalize_d_accepts (merge_transitions (of_tba A)) w).
@@ -1610,8 +1916,10 @@ Qed.
 Theorem export_guards_conjunctive :
   forall A t, In t (dta_trans (export A)) -> exists c, dt_guard t = [c].
 Proof.
-  intros A t Hin. unfold export, dprune_all in Hin.
-  apply dprune_n_incl in Hin. exact (explode_conjunctive Hin).
+  intros A t Hin. unfold export in Hin.
+  destruct (dmerge_states_all_trans Hin) as [t0 [Hin0 Hg]]. rewrite Hg.
+  unfold dprune_all in Hin0.
+  apply dprune_n_incl in Hin0. exact (explode_conjunctive Hin0).
 Qed.
 
 (* Invariants of the exported automaton are conjunctions of upper bounds. *)
@@ -1619,7 +1927,8 @@ Theorem export_invariants_conjunctive :
   forall A s,
     dta_inv (export A) s = None \/ exists U, dta_inv (export A) s = Some [U].
 Proof.
-  intros A s. unfold export, dprune_all. rewrite dprune_n_inv.
+  intros A s. unfold export. rewrite dmerge_states_all_inv.
+  unfold dprune_all. rewrite dprune_n_inv.
   exact (split_inv_conjunctive (normalize_d (merge_transitions (of_tba A))) s).
 Qed.
 

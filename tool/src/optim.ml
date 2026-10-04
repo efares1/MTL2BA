@@ -1848,14 +1848,130 @@ let rec dprune_n root n d =
 let dprune_all root d =
   dprune_n root (List.length d.dta_trans) d
 
+(** val dc_dec : mtl -> dconstraint -> dconstraint -> bool **)
+
+let dc_dec root a b =
+  match a with
+  | DSingle c ->
+    (match b with
+     | DSingle c0 -> cc_dec root c c0
+     | DDiff (_, _, _) -> false)
+  | DDiff (c, c0, r) ->
+    (match b with
+     | DSingle _ -> false
+     | DDiff (c1, c2, r0) ->
+       if clock_eq_dec root c c1
+       then if clock_eq_dec root c0 c2 then (=) r r0 else false
+       else false)
+
+(** val dconj_dec : mtl -> dconj -> dconj -> bool **)
+
+let dconj_dec root =
+  List.equal (dc_dec root)
+
+(** val cr_dec : mtl -> (clock * float) -> (clock * float) -> bool **)
+
+let cr_dec root a b =
+  let (a0, b0) = a in
+  let (c, r) = b in if clock_eq_dec root a0 c then (=) b0 r else false
+
+(** val oinv_dec : mtl -> uinv list option -> uinv list option -> bool **)
+
+let oinv_dec root a b =
+  match a with
+  | Some a0 ->
+    (match b with
+     | Some l -> List.equal (List.equal (cr_dec root)) a0 l
+     | None -> false)
+  | None -> (match b with
+             | Some _ -> false
+             | None -> true)
+
+(** val inv_norm : mtl -> uinv list option -> uinv list option **)
+
+let inv_norm _ = function
+| Some us ->
+  if List.exists (fun u -> match u with
+                           | [] -> true
+                           | _ :: _ -> false) us
+  then None
+  else Some us
+| None -> None
+
+(** val dred_trans : mtl -> int -> int -> dtrans -> dtrans **)
+
+let dred_trans _ p q0 t0 =
+  { dt_src = t0.dt_src; dt_label = t0.dt_label; dt_guard = t0.dt_guard;
+    dt_resets = t0.dt_resets; dt_tgt = (red p q0 t0.dt_tgt) }
+
+(** val dsim : mtl -> int -> int -> dtrans -> dtrans -> bool **)
+
+let dsim root p q0 t0 t' =
+  (&&)
+    ((&&)
+      ((&&) (set_eqb alit_eq_dec t0.dt_label t'.dt_label)
+        (set_eqb (dconj_dec root) t0.dt_guard t'.dt_guard))
+      (set_eqb (clock_eq_dec root) t0.dt_resets t'.dt_resets))
+    ((=) (red p q0 t0.dt_tgt) (red p q0 t'.dt_tgt))
+
+(** val dout : mtl -> dTA -> int -> dtrans list **)
+
+let dout _ d s =
+  List.filter (fun t0 -> (=) t0.dt_src s) d.dta_trans
+
+(** val dcovers : mtl -> dTA -> int -> int -> int -> int -> bool **)
+
+let dcovers root d p q0 s s' =
+  List.for_all (fun t0 ->
+    List.exists (fun t' -> dsim root p q0 t0 t') (dout root d s'))
+    (dout root d s)
+
+(** val dstates_mergeable : mtl -> dTA -> int -> int -> bool **)
+
+let dstates_mergeable root d p q0 =
+  (&&)
+    ((&&)
+      ((&&)
+        ((&&)
+          ((&&) ((&&) (not ((=) p q0)) ((<) p d.dta_nstates))
+            ((<) q0 d.dta_nstates))
+          ((=) (in_nat p d.dta_accepting) (in_nat q0 d.dta_accepting)))
+        (if oinv_dec root (inv_norm root (d.dta_inv p))
+              (inv_norm root (d.dta_inv q0))
+         then true
+         else false))
+      (dcovers root d p q0 q0 p))
+    (dcovers root d p q0 p q0)
+
+(** val dmerge_states : mtl -> int -> int -> dTA -> dTA **)
+
+let dmerge_states root p q0 d =
+  { dta_nstates = d.dta_nstates; dta_init = (red p q0 d.dta_init);
+    dta_trans =
+    (List.map (dred_trans root p q0)
+      (List.filter (fun t0 -> not ((=) t0.dt_src q0)) d.dta_trans));
+    dta_accepting = d.dta_accepting; dta_inv = d.dta_inv }
+
+(** val dtry_merge_states : mtl -> int -> int -> dTA -> dTA **)
+
+let dtry_merge_states root p q0 d =
+  if dstates_mergeable root d p q0 then dmerge_states root p q0 d else d
+
+(** val dmerge_states_all : mtl -> dTA -> dTA **)
+
+let dmerge_states_all root d =
+  fold_left (fun b s -> dtry_merge_states root s b.dta_init b)
+    ((fun s n -> List.init n (fun i -> s + i)) 0 d.dta_nstates) d
+
 (** val export : mtl -> tBA -> dTA **)
 
 let export root a =
-  dprune_all root
-    (explode_all root
-      (normalize_d root
-        (split root
-          (normalize_d root (merge_transitions root (of_tba root a))))))
+  dmerge_states_all root
+    (dprune_all root
+      (explode_all root
+        (normalize_d root
+          (split root
+            (normalize_d root (merge_transitions root (of_tba root a)))))))
 
 (** val optimize_export : mtl -> int -> tBA -> dTA **)
 

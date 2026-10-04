@@ -8,13 +8,10 @@
     <location id="id0" x="0" y="0">
       <name>A0</name>
     </location>
-    <location id="id1" x="200" y="0">
-      <name>A1</name>
-    </location>
-    <location id="id2" x="400" y="0">
+    <location id="id2" x="200" y="0">
       <name>A2</name>
     </location>
-    <init ref="id1"/>
+    <init ref="id0"/>
     <transition>
       <source ref="id2"/>
       <target ref="id0"/>
@@ -39,18 +36,7 @@
       <label kind="synchronisation">other?</label>
     </transition>
     <transition>
-      <source ref="id1"/>
-      <target ref="id0"/>
-      <label kind="synchronisation">other?</label>
-    </transition>
-    <transition>
       <source ref="id0"/>
-      <target ref="id2"/>
-      <label kind="synchronisation">e?</label>
-      <label kind="assignment">x0 = 0</label>
-    </transition>
-    <transition>
-      <source ref="id1"/>
       <target ref="id2"/>
       <label kind="synchronisation">e?</label>
       <label kind="assignment">x0 = 0</label>
