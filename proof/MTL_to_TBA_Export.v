@@ -1643,3 +1643,19 @@ Proof.
 Qed.
 
 Print Assumptions MTL_to_exported_correct.
+
+(* The same chain for any automaton A that is correct for T f, such as the
+   automaton returned by Spot: no project axiom is used. *)
+Theorem MTL_to_exported_correct_with :
+  forall (n : nat) (f : mtl) (A : PBuchi f) (w : timed_word),
+    (forall s : pword f, PBA_accepts A s <-> psat s 0 (T f)) ->
+    well_formed f ->
+    (msat w 0 f <-> DTA_accepts (export (optimize n (compile_with A))) w).
+Proof.
+  intros n f A w HA Hwf.
+  rewrite (@MTL_to_TBA_correct_with f A w HA Hwf).
+  rewrite (optimize_accepts n (compile_with A) w).
+  apply export_accepts.
+Qed.
+
+Print Assumptions MTL_to_exported_correct_with.

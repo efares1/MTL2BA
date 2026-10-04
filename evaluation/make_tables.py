@@ -41,7 +41,7 @@ def tex_escape(s):
 
 lines = [r'\begin{table*}[t]', r'\centering',
          r'\caption{Evaluation of \texttt{mtl2tba} and comparison with CASAAL. '
-         r'$|X|$: distinct timed subformulas of the formula. Spot: B\"uchi automaton '
+         r'$|X|$: distinct primitive (hatted) timed subformulas of the formula after unfolding of the ordinary operators. Spot: B\"uchi automaton '
          r'returned by Spot (states/transitions, one transition per cube). Opt.: after '
          r'reset completion and the verified optimizations (locations/transitions/clocks). '
          r'Export: automaton for UPPAAL (locations/transitions/clocks/locations with an '

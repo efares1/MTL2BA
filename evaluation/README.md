@@ -22,3 +22,16 @@
 3. In Ubuntu: `bash run_tool_eval.sh`
 4. On Windows: `python run_casaal.py <casaal folder>`
 5. `python make_tables.py`
+
+## Time origin and `-init`
+
+The results of `ours_results.tsv` are obtained without the option `-init`.
+`init_comparison.tsv` gives the measures of every formula with and without
+`-init`.  `check_initial_values.py` checks, on the automata of `out/`, that
+the initial location has no invariant and that no clock is read before it has
+been reset, so that acceptance does not depend on the initial clock values:
+
+    python check_initial_values.py out
+
+It reports F8, whose only clock is a restart clock tested by a lower bound
+before its first reset (a larger initial value only helps such a test).
