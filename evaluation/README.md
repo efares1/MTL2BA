@@ -35,6 +35,11 @@
   clauses of upper-bounded hatted Until by a weak until before calling Spot;
   the tool itself does not perform this replacement.  Writes
   `weak_runs.tsv`, `weak_results.tsv`, and `weak_table.tex` (Table 7).
+- `run_acceptance_eval.sh`: size of the automaton returned by Spot for every
+  configuration, with Until or weak until in the upper-bounded clauses, and
+  with state-based (`-B`, used by the tool), transition-based (`-b`), and
+  transition-based generalized (`--tgba`) Büchi acceptance; writes
+  `acceptance_results.tsv`.
 - `init_comparison.tsv`: measures with and without the option `-init`.
 - `check_initial_values.py`: the same condition as the verified check
   `init_free`, on the dot files (kept for reference).
