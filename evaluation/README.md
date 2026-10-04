@@ -29,6 +29,12 @@
   finite timed words, with clocks starting at 0 as in UPPAAL, and checks that
   the accepting sink (violation) is reached exactly when expected.  These
   checks validate the implementation; they do not replace the proof.
+- `run_weak_eval.sh`, `spot_weak.py`: primed configurations (measurement of the
+  effect of the degeneralization of the Büchi acceptance): `spot_weak.py`,
+  given to `mtl2tba` through its option `-spot`, replaces the Until of the
+  clauses of upper-bounded hatted Until by a weak until before calling Spot;
+  the tool itself does not perform this replacement.  Writes
+  `weak_runs.tsv`, `weak_results.tsv`, and `weak_table.tex` (Table 7).
 - `init_comparison.tsv`: measures with and without the option `-init`.
 - `check_initial_values.py`: the same condition as the verified check
   `init_free`, on the dot files (kept for reference).

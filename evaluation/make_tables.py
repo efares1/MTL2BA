@@ -177,4 +177,39 @@ for fid, desc, f, _ in forms:
     Fm.append(f'{fid} & {esc(desc)} & \\texttt{{{ff}}}\\\\')
 Fm += [r'\bottomrule', r'\end{tabular}', r'\end{table*}']
 open(os.path.join(HERE, 'formulas_table.tex'), 'w', encoding='utf-8').write('\n'.join(Fm) + '\n')
+# ------------------------------------------------------------ primed configurations
+weak = read('weak_results.tsv')
+Wt = [r'\begin{table}[t]', r'\centering',
+      r'\caption{Primed configurations: the Until of the clauses of upper-bounded '
+      r'hatted Until is replaced by a weak until in the formula given to Spot, which '
+      r'removes the degeneralization of the B\"uchi acceptance (configurations whose '
+      r'formula changes and whose sizes differ).  Spot: states/transitions; Opt.: '
+      r'locations/transitions; Sym.: symbolic transitions of the unprimed and primed '
+      r'configurations; Time: median of five runs, in seconds; CASAAL: '
+      r'states/transitions on the common domain.}',
+      r'\label{tab:weak}', r'\footnotesize', r'\setlength{\tabcolsep}{3pt}',
+      r'\begin{tabular}{@{}lrrrrrrrr@{}}', r'\toprule',
+      r' & \multicolumn{2}{c}{Spot} & \multicolumn{2}{c}{Opt.} & \multicolumn{2}{c}{Sym.} & & \\',
+      r'\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}',
+      r'Id & st & tr & loc & tr & $\mathsf{U}$ & $\mathsf{W}$ & Time & CASAAL\\', r'\midrule']
+for fid, desc, _, _ in forms:
+    wd = weak.get(fid + "'")
+    if not wd:
+        continue
+    d = R[fid]
+    if wd.get('status') == 'ok' and d['status'] == 'ok' and wd['opt_locs'] == d['opt_st'] \
+            and wd['opt_trans'] == d['opt_tr']:
+        continue
+    cx = casaal_cell(d).rsplit('/', 1)[0] if casaal_cell(d) != '--' else '--'
+    cx = cx.replace(r'$^\dagger$', '')
+    mark = r'$^\dagger$' if d['casaal_exact'] == 'no' else ''
+    if wd.get('status') != 'ok':
+        Wt.append(f"{fid}$'$ & \\multicolumn{{7}}{{c}}{{timeout (limit 300~s)}} & {cx}{mark}\\\\")
+        continue
+    su = d['sym_tr'] if d['status'] == 'ok' else 'timeout'
+    Wt.append(f"{fid}$'$ & {wd['spot_states']} & {wd['spot_trans']} & {wd['opt_locs']} & "
+              f"{wd['opt_trans']} & {su} & {wd['sym_trans']} & "
+              f"{float(wd['total_s_med']):.2f} & {cx}{mark}\\\\")
+Wt += [r'\bottomrule', r'\end{tabular}', r'\end{table}']
+open(os.path.join(HERE, 'weak_table.tex'), 'w', encoding='utf-8').write('\n'.join(Wt) + '\n')
 print('tables written')
