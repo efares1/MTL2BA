@@ -1,6 +1,6 @@
 \begin{table*}[t]
 \centering
-\caption{Benchmark formulas, in the input syntax of \texttt{mtl2tba} (\texttt{\^{}U}, \texttt{\^{}R}: hatted operators; \texttt{[]}, \texttt{<>}: $\Box$, $\Diamond$; \texttt{!}: negation).  CASAAL receives the same formula, with \texttt{/\textbackslash} and \texttt{\textbackslash/} for $\wedge$ and $\vee$, conjoined with \texttt{[](!(a /\textbackslash{} b))} for every pair of distinct propositions; for F3 and F13 it receives the closest encodings with a leading $\bigcirc$, which are not equivalent.  R1 is F1 with renamed propositions; it is the first instance of the family R$n$.}
+\caption{Benchmark formulas, in the input syntax of \texttt{mtl2tba} (\texttt{\^{}U}, \texttt{\^{}R}, \texttt{\^{}[]}, \texttt{\^{}<>}: hatted operators; \texttt{[]}, \texttt{<>}: $\Box$, $\Diamond$; \texttt{U[<=2]}: Until with bound $\le2$; \texttt{!}, \texttt{\&}, \texttt{|}, \texttt{->}: negation, conjunction, disjunction, implication).  F3 and F3b use the non-strict bound $\le2$.  CASAAL receives the same formula, with \texttt{/\textbackslash} and \texttt{\textbackslash/} for $\wedge$ and $\vee$, conjoined with \texttt{[](!(a /\textbackslash{} b))} for every pair of distinct propositions; for F3 and F13 it receives the closest encodings with a leading $\bigcirc$, which are not equivalent.  R1 is F1 with renamed propositions; it is the first instance of the family R$n$.}
 \label{tab:formulas}
 \small
 \begin{tabular}{@{}llp{0.62\textwidth}@{}}
@@ -16,9 +16,9 @@ F5 & minimum-delay response & \texttt{[](p -\textgreater{} \textless{}\textgreat
 F6 & strict minimum-delay response & \texttt{[](p -\textgreater{} \textless{}\textgreater{}[\textgreater{}2] q)}\\
 F7 & bounded recurrence & \texttt{[]\textless{}\textgreater{}[\textless{}=5] p}\\
 F8 & recurrence with minimum delay & \texttt{[]\textless{}\textgreater{}[\textgreater{}=2] p}\\
-F9 & Example 1 & \texttt{\textless{}\textgreater{}[\textless{}=5](p U[\textless{}=2] q)}\\
-F10 & Example 2 & \texttt{\textless{}\textgreater{}[\textless{}=5](([][\textless{}=3] (p \textbar{} q)) U[\textless{}=2] q)}\\
-F11 & Example 3 & \texttt{(\textless{}\textgreater{}[\textless{}=5] p) \& ([][\textless{}2] !p)}\\
+F9 & Example S1 & \texttt{\textless{}\textgreater{}[\textless{}=5](p U[\textless{}=2] q)}\\
+F10 & Example S2 & \texttt{\textless{}\textgreater{}[\textless{}=5](([][\textless{}=3] (p \textbar{} q)) U[\textless{}=2] q)}\\
+F11 & Running example & \texttt{(\textless{}\textgreater{}[\textless{}=5] p) \& ([][\textless{}2] !p)}\\
 F12 & response within a window & \texttt{[](p -\textgreater{} (\textless{}\textgreater{}[\textless{}=5] q \& [][\textless{}2] !q))}\\
 F13 & periodicity (hatted) & \texttt{e \& [](e -\textgreater{} (\^{}[][\textless{}2] !e \& \^{}\textless{}\textgreater{}[\textless{}=2] e))}\\
 F14 & closeness & \texttt{[](e1 -\textgreater{} (\textless{}\textgreater{}[\textless{}2](e2 \& \textless{}\textgreater{}[\textless{}3] e3) \textbar{} [](!e2 \& !e3)))}\\

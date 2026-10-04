@@ -35,6 +35,19 @@
   clauses of upper-bounded hatted Until by a weak until before calling Spot;
   the tool itself does not perform this replacement.  Writes
   `weak_runs.tsv`, `weak_results.tsv`, and `weak_table.tex` (Table 7).
+- `run_spot_validation.sh`: translation validation of the Spot step, the only
+  hypothesis of the end-to-end theorem.  The tool runs unchanged, with
+  `-spot spot_tee.sh`, a wrapper that calls `ltl2tgba` with the arguments of
+  the tool and keeps the clocked-LTL formula T(f) and the LBTT automaton; an
+  independent translator, ltl2ba 1.3 (Gastin and Oddoux), translates T(f)
+  after a common renaming of the atoms, and `autfilt --equivalent-to` checks
+  that both automata accept the same propositional words.  The numbers of
+  states and transitions read by the tool are compared with those of
+  `autfilt`.  ltl2ba must be compiled with enlarged formula buffers (see the
+  header of the script), since T(f) exceeds 4096 characters on N7 and N8.
+  Result (`spot_validation.tsv`): equivalent on the 28 configurations other
+  than R6 to R8; on R6 and R7 the equivalence check exceeds 600 s, and on R8
+  Spot does not answer within 300 s.
 - `run_acceptance_eval.sh`: size of the automaton returned by Spot for every
   configuration, with Until or weak until in the upper-bounded clauses, and
   with state-based (`-B`, used by the tool), transition-based (`-b`), and

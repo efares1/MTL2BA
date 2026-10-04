@@ -8,9 +8,9 @@ F5	minimum-delay response	[](p -> <>[>=2] q)	[](p -> <>[>=2] q)
 F6	strict minimum-delay response	[](p -> <>[>2] q)	[](p -> <>[>2] q)
 F7	bounded recurrence	[]<>[<=5] p	[]<>[<=5] p
 F8	recurrence with minimum delay	[]<>[>=2] p	[]<>[>=2] p
-F9	Example 1	<>[<=5](p U[<=2] q)	<>[<=5](p U[<=2] q)
-F10	Example 2	<>[<=5](([][<=3] (p | q)) U[<=2] q)	<>[<=5](([][<=3] (p \/ q)) U[<=2] q)
-F11	Example 3	(<>[<=5] p) & ([][<2] !p)	(<>[<=5] p) /\ ([][<2] !p)
+F9	Example S1	<>[<=5](p U[<=2] q)	<>[<=5](p U[<=2] q)
+F10	Example S2	<>[<=5](([][<=3] (p | q)) U[<=2] q)	<>[<=5](([][<=3] (p \/ q)) U[<=2] q)
+F11	Running example	(<>[<=5] p) & ([][<2] !p)	(<>[<=5] p) /\ ([][<2] !p)
 F12	response within a window	[](p -> (<>[<=5] q & [][<2] !q))	[](p -> ((<>[<=5] q) /\ ([][<2] !q)))
 F13	periodicity (hatted)	e & [](e -> (^[][<2] !e & ^<>[<=2] e))	~e /\ [](e -> ((X[][<2] !e) /\ (X<>[<=2] e)))
 F14	closeness	[](e1 -> (<>[<2](e2 & <>[<3] e3) | [](!e2 & !e3)))	[](e1 -> ((<>[<2](e2 /\ <>[<3] e3)) \/ [](!e2 /\ !e3)))

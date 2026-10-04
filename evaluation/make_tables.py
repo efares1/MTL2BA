@@ -110,7 +110,7 @@ L = [r'\begin{table*}[t]', r'\centering',
      r'formula conjoined with the mutual exclusion of its propositions; transitions '
      r'carry Boolean formulas.  $\dagger$: not equivalent (CASAAL has no hatted '
      r'operator); $\ddagger$: degenerate formula, equivalent to $\Box\neg p$ or '
-     r'$\Box\neg e$ with one event per position.  Formulas: Table~S1 of the '
+     r'$\Box\neg e$ with one event per position.  Formulas: Table~\ref{tab:formulas} of the '
      r'supplementary material.}',
      r'\label{tab:evaluation}', r'\small',
      r'\begin{tabular}{@{}lrrrrrrrrrrrrrr@{}}', r'\toprule',
@@ -138,7 +138,9 @@ S = [r'\begin{table}[t]', r'\centering',
      r'\caption{Scalability on the families R$n$ and N$n$: median time of the Spot, '
      r'optimization, and export stages and of the whole chain, minimum and maximum of '
      r'the five runs, peak memory, and exported transitions with Spot options '
-     r'\texttt{-B --small} (default) and \texttt{-B -D}.  Times in seconds, memory in MB.}',
+     r'\texttt{-B --small} (default) and \texttt{-B -D}.  Times in seconds, memory in MB.  '
+     r'The total also includes the stages not listed: reading of the output of Spot, '
+     r'reset completion, check $\mathsf{init\_free}$, symbolic transitions, and printing.}',
      r'\label{tab:scaling}', r'\footnotesize', r'\setlength{\tabcolsep}{3pt}',
      r'\begin{tabular}{@{}lrrrrrrrr@{}}', r'\toprule',
      r'Id & Spot & Opt. & Exp. & Total & [min, max] & Mem. & tr & tr \texttt{-D}\\',
@@ -161,8 +163,10 @@ open(os.path.join(HERE, 'scaling_table.tex'), 'w', encoding='utf-8').write('\n'.
 # ------------------------------------------------------------ formulas table
 Fm = [r'\begin{table*}[t]', r'\centering',
       r'\caption{Benchmark formulas, in the input syntax of \texttt{mtl2tba} '
-      r'(\texttt{\^{}U}, \texttt{\^{}R}: hatted operators; \texttt{[]}, \texttt{<>}: '
-      r'$\Box$, $\Diamond$; \texttt{!}: negation).  CASAAL receives the same formula, '
+      r'(\texttt{\^{}U}, \texttt{\^{}R}, \texttt{\^{}[]}, \texttt{\^{}<>}: hatted operators; '
+      r'\texttt{[]}, \texttt{<>}: $\Box$, $\Diamond$; \texttt{U[<=2]}: Until with bound $\le2$; '
+      r'\texttt{!}, \texttt{\&}, \texttt{|}, \texttt{->}: negation, conjunction, disjunction, '
+      r'implication).  F3 and F3b use the non-strict bound $\le2$.  CASAAL receives the same formula, '
       r'with \texttt{/\textbackslash} and \texttt{\textbackslash/} for $\wedge$ and $\vee$, '
       r'conjoined with \texttt{[](!(a /\textbackslash{} b))} for every pair of distinct '
       r'propositions; for F3 and F13 it receives the closest encodings with a leading '
@@ -185,8 +189,10 @@ Wt = [r'\begin{table}[t]', r'\centering',
       r'removes the degeneralization of the B\"uchi acceptance (configurations whose '
       r'formula changes and whose sizes differ).  Spot: states/transitions; Opt.: '
       r'locations/transitions; Sym.: symbolic transitions of the unprimed and primed '
-      r'configurations; Time: median of five runs, in seconds; CASAAL: '
-      r'states/transitions on the common domain.}',
+      r'configurations ($\mathsf{U}$: unprimed, $\mathsf{W}$: primed); Time: median of '
+      r'five runs of the primed configuration, in seconds; CASAAL: states/transitions '
+      r'on the common domain, $^\dagger$ as in Table~\ref{tab:evaluation}.  The export '
+      r'does not change the number of locations.}',
       r'\label{tab:weak}', r'\footnotesize', r'\setlength{\tabcolsep}{3pt}',
       r'\begin{tabular}{@{}lrrrrrrrr@{}}', r'\toprule',
       r' & \multicolumn{2}{c}{Spot} & \multicolumn{2}{c}{Opt.} & \multicolumn{2}{c}{Sym.} & & \\',
