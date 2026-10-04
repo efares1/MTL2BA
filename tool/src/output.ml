@@ -9,6 +9,10 @@ type names = {
   events : int list;           (* the events of the formula *)
 }
 
+(* names in their order of first occurrence, without repetition *)
+let uniq l =
+  List.rev (List.fold_left (fun acc x -> if List.mem x acc then acc else x :: acc) [] l)
+
 let num (b : float) =
   if Float.is_integer b then Printf.sprintf "%.0f" b else Printf.sprintf "%g" b
 
@@ -86,7 +90,7 @@ let dot_dta oc nm (d : dTA) =
         List.iter (fun c ->
             let g = conj_s " && " (List.map (dconstraint_s nm) c) in
             let r = match t.dt_resets with
-              | [] -> "" | z -> "\\n" ^ String.concat ", " (List.map nm.clock_name z) ^ " := 0" in
+              | [] -> "" | z -> "\\n" ^ String.concat ", " (uniq (List.map nm.clock_name z)) ^ " := 0" in
             Printf.fprintf oc "  L%d -> L%d [label=\"%s%s%s\"];\n" t.dt_src t.dt_tgt
               (if g = "true" then "" else g ^ "\\n") (label_s nm t.dt_label) r)
           t.dt_guard) d.dta_trans;
@@ -106,7 +110,7 @@ let dot_tba oc nm (a : tBA) =
         let g = conj_s " && "
             (List.filter_map (Option.map (constraint_s nm)) t.bt_guard) in
         let r = match t.bt_resets with
-          | [] -> "" | z -> "\\n" ^ String.concat ", " (List.map nm.clock_name z) ^ " := 0" in
+          | [] -> "" | z -> "\\n" ^ String.concat ", " (uniq (List.map nm.clock_name z)) ^ " := 0" in
         Printf.fprintf oc "  L%d -> L%d [label=\"%s%s%s\"];\n" t.bt_source t.bt_target
           (if g = "true" then "" else g ^ "\\n") (label_s nm t.bt_label) r
       end) a.tba_transitions;
@@ -162,7 +166,7 @@ let uppaal_dta oc nm (d : dTA) =
                 p "      <label kind=\"synchronisation\">%s?</label>\n" (event_s nm e);
                 if t.dt_resets <> [] then
                   p "      <label kind=\"assignment\">%s</label>\n"
-                    (String.concat ", " (List.map (fun x -> nm.clock_name x ^ " = 0") t.dt_resets));
+                    (String.concat ", " (List.map (fun x -> x ^ " = 0") (uniq (List.map nm.clock_name t.dt_resets))));
                 p "    </transition>\n")
               (allowed nm t.dt_label))
           t.dt_guard) d.dta_trans;
