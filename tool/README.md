@@ -27,7 +27,7 @@ Example:
 | parsing, negation normal form, `-init` | prototype (`mtl.ml`, `lexer.mll`, `parser.mly`, `mtl2mtl.ml`) |
 | derivation of the ordinary timed operators | extracted from Coq (`MUle`, ..., `MRgt`) |
 | clocked-LTL translation `T` | extracted from Coq |
-| LTL to Buchi automaton | Spot, `ltl2tgba -B -D --lbtt=t` |
+| LTL to Buchi automaton | Spot, `ltl2tgba -B --small --lbtt=t` |
 | reading of the Spot automaton (literals kept) | `lbtt_read.ml` |
 | relaxation and reset completion | extracted from Coq (`compile_with`) |
 | optimization, iterated to a fixpoint | extracted from Coq (`optimize`) |
