@@ -5,7 +5,7 @@
 Require Import List Bool Arith Reals Extraction ExtrOcamlBasic ExtrOcamlNatInt.
 Require Import MTL_to_TBA_Shared_Clock_Derived_Strict_Direct_Core.
 Require Import MTL_to_TBA_Invariants MTL_to_TBA_Optimizations MTL_to_TBA_Export.
-Require Import MTL_to_TBA_Initialization MTL_to_TBA_Simplify.
+Require Import MTL_to_TBA_Initialization MTL_to_TBA_Simplify MTL_to_TBA_Symbolic.
 
 (* ---------------------------------------------------------------- *)
 (* Booleans, pairs, and subset types                                 *)
@@ -106,4 +106,4 @@ Definition optimize_export {root : mtl} (n : nat) (A : TBA root) : DTA root :=
   export (optimize n A).
 
 Extraction "optim.ml" optimized optimize export optimize_export T ltl_atoms compile_with
-  timed_subformulas MUle MUlt MUge MUgt MRle MRlt MRge MRgt init_free ltl_simp.
+  timed_subformulas MUle MUlt MUge MUgt MRle MRlt MRge MRgt init_free ltl_simp symbolic.

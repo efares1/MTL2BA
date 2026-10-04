@@ -34,7 +34,7 @@ let stats_header = String.concat "	"
     "comp_locs"; "comp_trans"; "comp_clocks";
     "opt_rounds"; "opt_locs"; "opt_trans"; "opt_clocks";
     "exp_locs"; "exp_trans"; "exp_clocks"; "exp_invs"; "exp_diffs";
-    "opt_s"; "exp_s"; "total_s"; "init_free" ]
+    "opt_s"; "exp_s"; "total_s"; "init_free"; "sym_trans" ]
 
 let speclist = [
   ("-o", Arg.Set_string out, "<base> output files <base>.xml and <base>.dot (default: out)");
@@ -298,7 +298,10 @@ let () =
   } in
   let write file pr = Out_channel.with_open_bin file (fun oc -> pr oc) in
   write (!out ^ ".xml") (fun oc -> Output.uppaal_dta oc names d);
-  write (!out ^ ".dot") (fun oc -> Output.dot_dta oc names d);
+  (* symbolic automaton (Coq: symbolic, MTL_to_symbolic_correct_with) for the
+     drawing; the UPPAAL model keeps one edge per event and conjunctive guards *)
+  let sd = symbolic root d in
+  write (!out ^ ".dot") (fun oc -> Output.dot_sdta oc names sd);
   (* Graphviz: <base>.dot -> <base>.pdf *)
   let to_pdf base =
     let cmd = Printf.sprintf "%s -Tpdf %s -o %s" !dot_cmd
@@ -328,11 +331,13 @@ let () =
                                  List.length locs; List.length dtrs; nclk; ninv; ndiff ]
       @ [ Printf.sprintf "%.3f" t_opt; Printf.sprintf "%.3f" t_exp;
           Printf.sprintf "%.3f" (Unix.gettimeofday () -. t_start);
-          if free then "1" else "0" ]))
+          if free then "1" else "0";
+          string_of_int (List.length (Output.sdta_reachable_trans sd)) ]))
   else
-    Printf.printf "%s: %d clocks, %d locations, %d transitions -> %s.xml, %s.dot%s
+    Printf.printf "%s: %d clocks, %d locations, %d transitions (%d symbolic) -> %s.xml, %s.dot%s
 "
-      !formula nclk (List.length locs) (List.length dtrs) !out !out
+      !formula nclk (List.length locs) (List.length dtrs)
+      (List.length (Output.sdta_reachable_trans sd)) !out !out
       (if !pdf then ", " ^ !out ^ ".pdf" else "");
   if not free && not !stats then
     prerr_endline "mtl2tba: warning: a clock may be read before its first reset; \

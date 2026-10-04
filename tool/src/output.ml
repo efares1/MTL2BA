@@ -96,6 +96,51 @@ let dot_dta oc nm (d : dTA) =
           t.dt_guard) d.dta_trans;
   Printf.fprintf oc "}\n"
 
+(* Symbolic automaton (Coq: symbolic): one edge per source, target, and
+   resets, labeled by a disjunction of cases "guard: events". *)
+let evset_s nm = function
+  | EvIn l ->
+    (match List.filter (fun e -> List.mem e l) nm.events with
+     | [] -> "false" | l -> String.concat "|" (List.map nm.event_name l))
+  | EvOut [] -> "any"
+  | EvOut l ->
+    String.concat "|"
+      (List.map nm.event_name (List.filter (fun e -> not (List.mem e l)) nm.events)
+       @ [ "other" ])
+
+let sdta_locations (d : sDTA) =
+  reachable d.sdta_init (fun s ->
+      List.filter_map (fun t -> if t.st_src = s then Some t.st_tgt else None) d.sdta_trans)
+
+let sdta_reachable_trans (d : sDTA) =
+  let locs = sdta_locations d in
+  List.filter (fun t -> List.mem t.st_src locs) d.sdta_trans
+
+let dot_sdta oc nm (d : sDTA) =
+  let locs = sdta_locations d in
+  Printf.fprintf oc "digraph TA {\n  rankdir=LR;\n  node [shape=circle];\n";
+  Printf.fprintf oc "  init [shape=point];\n  init -> L%d;\n" d.sdta_init;
+  List.iter (fun s ->
+      let shape = if List.mem s d.sdta_accepting then "doublecircle" else "circle" in
+      let inv = match d.sdta_inv s with
+        | Some [ u ] when u <> [] ->
+          Some (String.concat " && "
+                  (List.map (fun (x, b) -> Printf.sprintf "%s <= %s" (nm.clock_name x) (num b)) u))
+        | _ -> None in
+      let lab = match inv with
+        | Some i -> Printf.sprintf "L%d\\n%s" s i | None -> Printf.sprintf "L%d" s in
+      Printf.fprintf oc "  L%d [shape=%s, label=\"%s\"];\n" s shape lab) locs;
+  List.iter (fun t ->
+      let case (e, c) =
+        let g = conj_s " && " (List.map (dconstraint_s nm) c) in
+        (if g = "true" then "" else g ^ ": ") ^ evset_s nm e in
+      let r = match t.st_resets with
+        | [] -> "" | z -> "\\n" ^ String.concat ", " (uniq (List.map nm.clock_name z)) ^ " := 0" in
+      Printf.fprintf oc "  L%d -> L%d [label=\"%s%s\"];\n" t.st_src t.st_tgt
+        (String.concat "\\n" (List.map case t.st_cases)) r)
+    (sdta_reachable_trans d);
+  Printf.fprintf oc "}\n"
+
 let dot_tba oc nm (a : tBA) =
   let locs = reachable a.tba_init (fun s ->
       List.filter_map (fun t -> if t.bt_source = s then Some t.bt_target else None)

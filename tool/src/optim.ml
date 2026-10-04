@@ -3,6 +3,13 @@
 let xorb b1 b2 =
   if b1 then if b2 then false else true else b2
 
+(** val remove : ('a1 -> 'a1 -> bool) -> 'a1 -> 'a1 list -> 'a1 list **)
+
+let rec remove eq_dec x = function
+| [] -> []
+| y :: tl ->
+  if eq_dec x y then remove eq_dec x tl else y :: (remove eq_dec x tl)
+
 (** val fold_left : ('a1 -> 'a2 -> 'a1) -> 'a2 list -> 'a1 -> 'a1 **)
 
 let rec fold_left f l a0 =
@@ -2131,6 +2138,104 @@ let rec ltl_simp root f = match f with
 | LUntil (p, q0) -> s_until root (ltl_simp root p) (ltl_simp root q0)
 | LRelease (p, q0) -> s_release root (ltl_simp root p) (ltl_simp root q0)
 | _ -> f
+
+type evset =
+| EvIn of action list
+| EvOut of action list
+
+(** val memb : action -> action list -> bool **)
+
+let memb a l =
+  if (fun eq a l -> List.exists (eq a) l) (=) a l then true else false
+
+(** val meet : evset -> alit -> evset **)
+
+let meet e = function
+| (a, pos) ->
+  if pos
+  then (match e with
+        | EvIn l -> if memb a l then EvIn (a :: []) else EvIn []
+        | EvOut l -> if memb a l then EvIn [] else EvIn (a :: []))
+  else (match e with
+        | EvIn l -> EvIn (remove (=) a l)
+        | EvOut l -> EvOut (a :: l))
+
+(** val evset_of_label : alit list -> evset **)
+
+let evset_of_label l =
+  fold_left meet l (EvOut [])
+
+(** val ev_union : evset -> evset -> evset **)
+
+let ev_union e f =
+  match e with
+  | EvIn a ->
+    (match f with
+     | EvIn b -> EvIn (List.append a b)
+     | EvOut b -> EvOut (List.filter (fun y -> not (memb y a)) b))
+  | EvOut a ->
+    (match f with
+     | EvIn b -> EvOut (List.filter (fun y -> not (memb y b)) a)
+     | EvOut b -> EvOut (List.filter (fun y -> memb y b) a))
+
+type scase = evset * dconj
+
+type strans = { st_src : int; st_resets : clock list; st_tgt : int;
+                st_cases : scase list }
+
+type sDTA = { sdta_nstates : int; sdta_init : int; sdta_trans : strans list;
+              sdta_accepting : int list; sdta_inv : (int -> uinv list option) }
+
+(** val add_case : mtl -> scase -> scase list -> scase list **)
+
+let rec add_case root x = function
+| [] -> x :: []
+| y :: r ->
+  if dconj_dec root (snd x) (snd y)
+  then ((ev_union (fst y) (fst x)), (snd y)) :: r
+  else y :: (add_case root x r)
+
+(** val add_cases : mtl -> scase list -> scase list -> scase list **)
+
+let add_cases root xs cs =
+  (fun f a l -> List.fold_right f l a) (add_case root) cs xs
+
+(** val cases_of : mtl -> dtrans -> scase list **)
+
+let cases_of _ t0 =
+  List.map (fun c -> ((evset_of_label t0.dt_label), c)) t0.dt_guard
+
+(** val same_skey : mtl -> strans -> dtrans -> bool **)
+
+let same_skey root g t0 =
+  (&&) ((&&) ((=) g.st_src t0.dt_src) ((=) g.st_tgt t0.dt_tgt))
+    (if List.equal (clock_eq_dec root) g.st_resets t0.dt_resets
+     then true
+     else false)
+
+(** val ins : mtl -> dtrans -> strans list -> strans list **)
+
+let rec ins root t0 = function
+| [] ->
+  { st_src = t0.dt_src; st_resets = t0.dt_resets; st_tgt = t0.dt_tgt;
+    st_cases = (add_cases root (cases_of root t0) []) } :: []
+| g :: r ->
+  if same_skey root g t0
+  then { st_src = g.st_src; st_resets = g.st_resets; st_tgt = g.st_tgt;
+         st_cases = (add_cases root (cases_of root t0) g.st_cases) } :: r
+  else g :: (ins root t0 r)
+
+(** val group0 : mtl -> dtrans list -> strans list **)
+
+let group0 root ts =
+  (fun f a l -> List.fold_right f l a) (ins root) [] ts
+
+(** val symbolic : mtl -> dTA -> sDTA **)
+
+let symbolic root d =
+  { sdta_nstates = d.dta_nstates; sdta_init = d.dta_init; sdta_trans =
+    (group0 root d.dta_trans); sdta_accepting = d.dta_accepting; sdta_inv =
+    d.dta_inv }
 
 (** val optimize_export : mtl -> int -> tBA -> dTA **)
 

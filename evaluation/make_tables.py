@@ -38,6 +38,7 @@ def pairs(path, pat):
 
 ours = read('ours_results.tsv')
 small = read('spot_det.tsv')
+sym = read('sym_sizes.tsv')
 casx = read('casaal_exclusive.tsv')
 cas0 = read('casaal_results.tsv')
 
@@ -52,7 +53,7 @@ cols = ['id', 'description', 'status', 'clocks_f', 'spot_st', 'spot_tr', 'comp_s
         'total_s_max', 'mem_mb', 'det_spot_st', 'det_spot_tr', 'det_exp_st',
         'det_exp_tr', 'det_total_s', 'casaal_x_st', 'casaal_x_tr', 'casaal_x_clk',
         'casaal_x_s', 'casaal_st', 'casaal_tr', 'casaal_clk', 'casaal_exact',
-        'exp_pairs', 'casaal_x_pairs']
+        'exp_pairs', 'casaal_x_pairs', 'sym_tr']
 rows = []
 for fid, desc, _, _ in forms:
     o, sm, cx, c0 = ours.get(fid, {}), small.get(fid, {}), casx.get(fid, {}), cas0.get(fid, {})
@@ -72,7 +73,8 @@ for fid, desc, _, _ in forms:
                  pairs(os.path.join(HERE, 'out', fid + '.dot'),
                        r'\n\s*(L\d+) -> (L\d+) \[') if ok(o) else '',
                  pairs(os.path.join(HERE, 'casaal_out_x', fid + '.gv'),
-                       r'\n\s*([1-9]\d*) -> (\d+)')])
+                       r'\n\s*([1-9]\d*) -> (\d+)'),
+                 sym.get(fid, {}).get('sym_trans', '') if ok(sym.get(fid, {})) else ''])
 with open(os.path.join(HERE, 'results.tsv'), 'w', encoding='utf-8', newline='') as f:
     w = csv.writer(f, delimiter='\t')
     w.writerow(cols)
@@ -102,7 +104,8 @@ L = [r'\begin{table*}[t]', r'\centering',
      r'cube).  Opt.: after reset completion and the verified optimizations '
      r'(locations/transitions/clocks).  Export: automaton for UPPAAL (locations, '
      r'transitions, clocks, locations with an invariant, and occurrences of difference '
-     r'constraints in the guards).  Time: median of five runs of the whole chain, in '
+     r'constraints in the guards).  Sym.: transitions of the symbolic automaton, with '
+     r'Boolean labels.  Time: median of five runs of the whole chain, in '
      r'seconds.  CASAAL: states/transitions/clocks of the automaton of CASAAL for the '
      r'formula conjoined with the mutual exclusion of its propositions; transitions '
      r'carry Boolean formulas.  $\dagger$: not equivalent (CASAAL has no hatted '
@@ -110,22 +113,22 @@ L = [r'\begin{table*}[t]', r'\centering',
      r'$\Box\neg e$ with one event per position.  Formulas: Table~S1 of the '
      r'supplementary material.}',
      r'\label{tab:evaluation}', r'\small',
-     r'\begin{tabular}{@{}lrrrrrrrrrrrrr@{}}', r'\toprule',
+     r'\begin{tabular}{@{}lrrrrrrrrrrrrrr@{}}', r'\toprule',
      r' & & \multicolumn{2}{c}{Spot} & \multicolumn{3}{c}{Opt.} & '
-     r'\multicolumn{5}{c}{Export} & & CASAAL\\',
+     r'\multicolumn{5}{c}{Export} & & & CASAAL\\',
      r'\cmidrule(lr){3-4}\cmidrule(lr){5-7}\cmidrule(lr){8-12}',
-     r'Id & $|X|$ & st & tr & loc & tr & clk & loc & tr & clk & inv & diff '
+     r'Id & $|X|$ & st & tr & loc & tr & clk & loc & tr & clk & inv & diff & Sym. '
      r'& Time & st/tr/clk\\', r'\midrule']
 for fid, desc, _, _ in forms:
     d = R[fid]
     name = fid + (r'$^\ddagger$' if fid in DEGENERATE else '')
     if d['status'] != 'ok':
-        L.append(f"{name} & \\multicolumn{{12}}{{c}}{{{d['status']} (limit 300~s)}} & "
+        L.append(f"{name} & \\multicolumn{{13}}{{c}}{{{d['status']} (limit 300~s)}} & "
                  f"{casaal_cell(d)}\\\\")
         continue
     L.append(f"{name} & {d['clocks_f']} & {d['spot_st']} & {d['spot_tr']} & {d['opt_st']} & "
              f"{d['opt_tr']} & {d['opt_clk']} & {d['exp_st']} & {d['exp_tr']} & "
-             f"{d['exp_clk']} & {d['exp_inv']} & {d['exp_diff']} & "
+             f"{d['exp_clk']} & {d['exp_inv']} & {d['exp_diff']} & {d['sym_tr']} & "
              f"{float(d['total_s']):.2f} & {casaal_cell(d)}\\\\")
 L += [r'\bottomrule', r'\end{tabular}', r'\end{table*}']
 open(os.path.join(HERE, 'results_table.tex'), 'w', encoding='utf-8').write('\n'.join(L) + '\n')
