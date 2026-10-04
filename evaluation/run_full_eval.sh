@@ -1,0 +1,61 @@
+#!/bin/bash
+# Full evaluation of mtl2tba: sizes, repeated timings, peak memory, stage
+# times, and the effect of the Spot options.
+# Run in WSL Ubuntu (Spot, dune, menhir installed):
+#     bash run_full_eval.sh            # 5 runs per formula, limit 300 s
+#     REPS=3 LIMIT=120 bash run_full_eval.sh
+# Writes ours_results.tsv (median of the runs), ours_runs.tsv (every run),
+# spot_det.tsv (Spot with -B -D instead of the default -B --small), machine.txt,
+# and the exported automata in out/.
+HERE="$(cd "$(dirname "$0")" && pwd)"
+TOOL="$HERE/../tool"
+B=~/mtl2tba_eval
+REPS=${REPS:-5}
+LIMIT=${LIMIT:-300}
+rm -rf "$B" && cp -r "$TOOL" "$B" && (cd "$B" && rm -rf _build && dune build 2>&1 | head -20)
+EXE="$B/_build/default/src/mtl2tba.exe"
+mkdir -p "$HERE/out"
+
+# Spot with -B -D instead of the default -B --small
+SMALL="$B/spot_det.sh"
+cat > "$SMALL" <<'EOS'
+#!/bin/bash
+args=()
+for a in "$@"; do [ "$a" = "--small" ] && a="-D"; args+=("$a"); done
+exec ltl2tgba "${args[@]}"
+EOS
+chmod +x "$SMALL"
+
+{
+  echo "date: $(date -u +%Y-%m-%dT%H:%MZ)"
+  lscpu | grep -E "Model name|^CPU\(s\)"
+  free -m | awk '/Mem:/ {print "memory (MB): " $2}'
+  echo "kernel: $(uname -r)"
+  grep PRETTY /etc/os-release
+  ltl2tgba --version | head -1
+  ocaml -version
+  echo "dune $(dune --version)"
+  echo "repetitions: $REPS, limit: $LIMIT s"
+} > "$HERE/machine.txt"
+
+HDR=$("$EXE" -stats-header)
+printf 'id\trun\tstatus\tmem_kb\t%s\n' "$HDR" > "$HERE/ours_runs.tsv"
+printf 'id\tstatus\t%s\n' "$HDR" > "$HERE/spot_det.tsv"
+grep -v '^#' "$HERE/formulas.tsv" | while IFS=$'\t' read -r id desc ours cas; do
+  [ -z "$id" ] && continue
+  for r in $(seq 1 "$REPS"); do
+    line=$(cd "$HERE/out" && /usr/bin/time -f '%M' -o /tmp/mem.txt \
+             timeout "$LIMIT" "$EXE" -stats -nopdf -o "$id" "$ours" 2>"$HERE/out/$id.err")
+    code=$?
+    mem=$(tail -1 /tmp/mem.txt)
+    if [ $code -eq 0 ]; then st=ok; elif [ $code -eq 124 ]; then st=timeout; else st=error; fi
+    printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$r" "$st" "$mem" "$line" >> "$HERE/ours_runs.tsv"
+    echo "$id run $r: $st"
+    [ "$st" = ok ] || break
+  done
+  line=$(cd /tmp && timeout "$LIMIT" "$EXE" -stats -nopdf -spot "$SMALL" -o small "$ours" 2>/dev/null)
+  code=$?
+  if [ $code -eq 0 ]; then st=ok; elif [ $code -eq 124 ]; then st=timeout; else st=error; fi
+  printf '%s\t%s\t%s\n' "$id" "$st" "$line" >> "$HERE/spot_det.tsv"
+done
+python3 "$HERE/summarize_runs.py"

@@ -27,16 +27,18 @@ let formula = ref ""
 let stats = ref false
 let pdf = ref true
 let dot_cmd = ref "dot"
+let simp = ref false
 
 let stats_header = String.concat "	"
   [ "formula_clocks"; "spot_states"; "spot_trans"; "spot_s";
     "comp_locs"; "comp_trans"; "comp_clocks";
     "opt_rounds"; "opt_locs"; "opt_trans"; "opt_clocks";
     "exp_locs"; "exp_trans"; "exp_clocks"; "exp_invs"; "exp_diffs";
-    "opt_s"; "exp_s"; "total_s" ]
+    "opt_s"; "exp_s"; "total_s"; "init_free" ]
 
 let speclist = [
   ("-o", Arg.Set_string out, "<base> output files <base>.xml and <base>.dot (default: out)");
+  ("-simp", Arg.Set simp, " simplify the trivial operands of the clocked-LTL formula before Spot (proved; Spot does it anyway)");
   ("-init", Arg.Set with_init, " add an initialization event _init_ fixing the time origin");
   ("-n", Arg.Set_int rounds, "<n> maximal number of optimization rounds (default: 50)");
   ("-spot", Arg.Set_string spot, "<cmd> LTL-to-Buchi command (default: ltl2tgba)");
@@ -71,6 +73,18 @@ let event s =
 
 (* Prototype formulas to the formulas of the Coq development; the ordinary
    timed operators are derived by the extracted definitions. *)
+(* Bounds are integers in [0, 2^30].  They, their sums with one another,
+   their differences, and their negations are then exactly represented by
+   OCaml floats (53-bit mantissa) and fit in the 32-bit integers of UPPAAL, so
+   that the floating-point realization of the real numbers of the proof is
+   exact on every value the extracted code computes. *)
+let max_bound = 1 lsl 30
+
+let bound (d : int) : float =
+  if d < 0 || d > max_bound then
+    fail "bound %d outside the supported range [0, %d]" d max_bound;
+  float d
+
 let rec conv (f : Mtl.mtl) : mtl =
   let b2 c p q = (conv p, conv q, c) in
   match f with
@@ -85,34 +99,34 @@ let rec conv (f : Mtl.mtl) : mtl =
     let (p, q, c) = b2 c p q in
     (match c with
      | Mtl.Untimed | Mtl.GE 0 -> MU (p, q)
-     | Mtl.LE d -> mUle (float d) p q
-     | Mtl.LT d -> mUlt (float d) p q
-     | Mtl.GE d -> mUge (float d) p q
-     | Mtl.GT d -> mUgt (float d) p q)
+     | Mtl.LE d -> mUle (bound d) p q
+     | Mtl.LT d -> mUlt (bound d) p q
+     | Mtl.GE d -> mUge (bound d) p q
+     | Mtl.GT d -> mUgt (bound d) p q)
   | Mtl.Release (c, p, q) ->
     let (p, q, c) = b2 c p q in
     (match c with
      | Mtl.Untimed | Mtl.GE 0 -> MR (p, q)
-     | Mtl.LE d -> mRle (float d) p q
-     | Mtl.LT d -> mRlt (float d) p q
-     | Mtl.GE d -> mRge (float d) p q
-     | Mtl.GT d -> mRgt (float d) p q)
+     | Mtl.LE d -> mRle (bound d) p q
+     | Mtl.LT d -> mRlt (bound d) p q
+     | Mtl.GE d -> mRge (bound d) p q
+     | Mtl.GT d -> mRgt (bound d) p q)
   | Mtl.XUntil (c, p, q) ->
     let (p, q, c) = b2 c p q in
     (match c with
      | Mtl.Untimed | Mtl.GE 0 -> MNext (MU (p, q))
-     | Mtl.LE d -> MUhatLe (float d, p, q)
-     | Mtl.LT d -> MUhatLt (float d, p, q)
-     | Mtl.GE d -> MUhatGe (float d, p, q)
-     | Mtl.GT d -> MUhatGt (float d, p, q))
+     | Mtl.LE d -> MUhatLe (bound d, p, q)
+     | Mtl.LT d -> MUhatLt (bound d, p, q)
+     | Mtl.GE d -> MUhatGe (bound d, p, q)
+     | Mtl.GT d -> MUhatGt (bound d, p, q))
   | Mtl.XRelease (c, p, q) ->
     let (p, q, c) = b2 c p q in
     (match c with
      | Mtl.Untimed | Mtl.GE 0 -> MNext (MR (p, q))
-     | Mtl.LE d -> MRhatLe (float d, p, q)
-     | Mtl.LT d -> MRhatLt (float d, p, q)
-     | Mtl.GE d -> MRhatGe (float d, p, q)
-     | Mtl.GT d -> MRhatGt (float d, p, q))
+     | Mtl.LE d -> MRhatLe (bound d, p, q)
+     | Mtl.LT d -> MRhatLt (bound d, p, q)
+     | Mtl.GE d -> MRhatGe (bound d, p, q)
+     | Mtl.GT d -> MRhatGt (bound d, p, q))
 
 (* [well_formed] of the Coq development *)
 let rec well_formed = function
@@ -167,7 +181,7 @@ let run_spot ltl_text =
   let fin = Filename.temp_file "mtl2tba" ".ltl" in
   let fout = Filename.temp_file "mtl2tba" ".lbtt" in
   Out_channel.with_open_bin fin (fun oc -> output_string oc ltl_text);
-  let cmd = Printf.sprintf "%s -B -D --lbtt=t -F %s > %s" !spot
+  let cmd = Printf.sprintf "%s -B --small --lbtt=t -F %s > %s" !spot
       (Filename.quote fin) (Filename.quote fout) in
   log "command: %s" cmd;
   if Sys.command cmd <> 0 then fail "the command %s failed (is Spot installed?)" !spot;
@@ -235,7 +249,9 @@ let () =
   log "clocks: %s" (String.concat ", " (List.mapi (fun i _ -> "x" ^ string_of_int i) clocks));
   (* 3 *)
   let ltl = t root in
-  let ltl_text = spot_formula nm ltl in
+  (* proved simplification (Coq: ltl_simp_correct); the atoms of T f are kept
+     in atom_tbl, a superset of those of the simplified formula *)
+  let ltl_text = spot_formula nm (if !simp then ltl_simp root ltl else ltl) in
   log "clocked LTL: %s" ltl_text;
   let atom_tbl = Hashtbl.create 16 in
   List.iter (fun a -> Hashtbl.replace atom_tbl (nm a) a) (ltl_atoms root ltl);
@@ -268,6 +284,12 @@ let () =
   let t_exp0 = Unix.gettimeofday () in
   let d = export root opt in
   let t_exp = Unix.gettimeofday () -. t_exp0 in
+  (* verified check of Coq theorem init_free_accepts0: no clock is read
+     before its first reset, so that the automaton accepts the same words
+     when every clock starts at 0 at time 0, as in UPPAAL *)
+  let t_free0 = Unix.gettimeofday () in
+  let free = init_free root d in
+  log "initial-value check (init_free): %b, %.3f s" free (Unix.gettimeofday () -. t_free0);
   (* 8 *)
   let names = {
     Output.clock_name = clock_name clocks;
@@ -305,9 +327,14 @@ let () =
       @ List.map string_of_int [ s0; t0; c0; k; s1; t1; c1;
                                  List.length locs; List.length dtrs; nclk; ninv; ndiff ]
       @ [ Printf.sprintf "%.3f" t_opt; Printf.sprintf "%.3f" t_exp;
-          Printf.sprintf "%.3f" (Unix.gettimeofday () -. t_start) ]))
+          Printf.sprintf "%.3f" (Unix.gettimeofday () -. t_start);
+          if free then "1" else "0" ]))
   else
     Printf.printf "%s: %d clocks, %d locations, %d transitions -> %s.xml, %s.dot%s
 "
       !formula nclk (List.length locs) (List.length dtrs) !out !out
-      (if !pdf then ", " ^ !out ^ ".pdf" else "")
+      (if !pdf then ", " ^ !out ^ ".pdf" else "");
+  if not free && not !stats then
+    prerr_endline "mtl2tba: warning: a clock may be read before its first reset; \
+the result for clocks starting at 0 (as in UPPAAL) is not covered by \
+theorem MTL_to_exported_correct0_with"

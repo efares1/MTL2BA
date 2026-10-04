@@ -1973,6 +1973,165 @@ let export root a =
           (split root
             (normalize_d root (merge_transitions root (of_tba root a)))))))
 
+(** val dc_clocks : mtl -> dconstraint -> clock list **)
+
+let dc_clocks _ = function
+| DSingle k -> k.guard_clock :: []
+| DDiff (x, y, _) -> x :: (y :: [])
+
+(** val trans_reads : mtl -> dtrans -> clock list **)
+
+let trans_reads root t0 =
+  List.concat_map (List.concat_map (dc_clocks root)) t0.dt_guard
+
+(** val inv_reads : mtl -> uinv list option -> clock list **)
+
+let inv_reads _ = function
+| Some us -> List.concat_map (List.map fst) us
+| None -> []
+
+(** val mem_clock : mtl -> clock -> clock list -> bool **)
+
+let mem_clock root x l =
+  if (fun eq a l -> List.exists (eq a) l) (clock_eq_dec root) x l
+  then true
+  else false
+
+(** val inv_table : mtl -> dTA -> clock list list **)
+
+let inv_table root d =
+  List.map (fun s -> inv_reads root (d.dta_inv s))
+    ((fun s n -> List.init n (fun i -> s + i)) 0 d.dta_nstates)
+
+(** val live0 : mtl -> dTA -> clock list list -> clock -> int list **)
+
+let live0 root d tbl x =
+  List.append
+    (List.filter (fun s ->
+      mem_clock root x
+        ((fun n l d -> match List.nth_opt l n with Some x -> x | None -> d) s
+          tbl []))
+      ((fun s n -> List.init n (fun i -> s + i)) 0 d.dta_nstates))
+    (List.map (fun t0 -> t0.dt_src)
+      (List.filter (fun t0 -> mem_clock root x (trans_reads root t0))
+        d.dta_trans))
+
+(** val live_new : mtl -> dTA -> clock -> int list -> int list **)
+
+let live_new root d x s =
+  List.map (fun t0 -> t0.dt_src)
+    (List.filter (fun t0 ->
+      (&&) ((&&) (not (mem_clock root x t0.dt_resets)) (in_nat t0.dt_tgt s))
+        (not (in_nat t0.dt_src s)))
+      d.dta_trans)
+
+(** val live_iter0 : mtl -> dTA -> clock -> int -> int list -> int list **)
+
+let rec live_iter0 root d x n s =
+  (fun fO fS n -> if n = 0 then fO () else fS (n - 1))
+    (fun _ -> s)
+    (fun m ->
+    match live_new root d x s with
+    | [] -> s
+    | n0 :: l0 -> live_iter0 root d x m (List.append s (n0 :: l0)))
+    n
+
+(** val live_set : mtl -> dTA -> clock list list -> clock -> int list **)
+
+let live_set root d tbl x =
+  live_iter0 root d x ((fun n -> n + 1) d.dta_nstates) (live0 root d tbl x)
+
+(** val live_ok :
+    mtl -> dTA -> clock list list -> clock -> int list -> bool **)
+
+let live_ok root d tbl x s =
+  (&&)
+    ((&&) (not (in_nat d.dta_init s))
+      (List.for_all (fun s0 ->
+        (||)
+          (not
+            (mem_clock root x
+              ((fun n l d -> match List.nth_opt l n with Some x -> x | None -> d)
+                s0 tbl [])))
+          (in_nat s0 s))
+        ((fun s n -> List.init n (fun i -> s + i)) 0 d.dta_nstates)))
+    (List.for_all (fun t0 ->
+      (&&)
+        ((||) (not (mem_clock root x (trans_reads root t0)))
+          (in_nat t0.dt_src s))
+        ((||)
+          ((||) (mem_clock root x t0.dt_resets) (not (in_nat t0.dt_tgt s)))
+          (in_nat t0.dt_src s)))
+      d.dta_trans)
+
+(** val init_free : mtl -> dTA -> bool **)
+
+let init_free root d =
+  let tbl = inv_table root d in
+  List.for_all (fun x -> live_ok root d tbl x (live_set root d tbl x))
+    (all_clocks root)
+
+(** val s_and : mtl -> ltl -> ltl -> ltl **)
+
+let s_and _ p q0 =
+  match p with
+  | LTrue -> q0
+  | LFalse -> (match q0 with
+               | LTrue -> p
+               | _ -> LFalse)
+  | _ -> (match q0 with
+          | LTrue -> p
+          | LFalse -> LFalse
+          | _ -> LAnd (p, q0))
+
+(** val s_or : mtl -> ltl -> ltl -> ltl **)
+
+let s_or _ p q0 =
+  match p with
+  | LTrue -> (match q0 with
+              | LFalse -> p
+              | _ -> LTrue)
+  | LFalse -> q0
+  | _ -> (match q0 with
+          | LTrue -> LTrue
+          | LFalse -> p
+          | _ -> LOr (p, q0))
+
+(** val s_next : mtl -> ltl -> ltl **)
+
+let s_next _ p = match p with
+| LTrue -> LTrue
+| LFalse -> LFalse
+| _ -> LNext p
+
+(** val s_until : mtl -> ltl -> ltl -> ltl **)
+
+let s_until _ p q0 = match q0 with
+| LTrue -> LTrue
+| LFalse -> LFalse
+| _ -> (match p with
+        | LFalse -> q0
+        | _ -> LUntil (p, q0))
+
+(** val s_release : mtl -> ltl -> ltl -> ltl **)
+
+let s_release _ p q0 = match q0 with
+| LTrue -> LTrue
+| LFalse -> LFalse
+| _ -> (match p with
+        | LTrue -> q0
+        | _ -> LRelease (p, q0))
+
+(** val ltl_simp : mtl -> ltl -> ltl **)
+
+let rec ltl_simp root f = match f with
+| LAnd (p, q0) -> s_and root (ltl_simp root p) (ltl_simp root q0)
+| LOr (p, q0) -> s_or root (ltl_simp root p) (ltl_simp root q0)
+| LNext p -> s_next root (ltl_simp root p)
+| LUntil (p, q0) -> s_until root (ltl_simp root p) (ltl_simp root q0)
+| LRelease (p, q0) -> s_release root (ltl_simp root p) (ltl_simp root q0)
+| _ -> f
+
 (** val optimize_export : mtl -> int -> tBA -> dTA **)
 
 let optimize_export root n a =

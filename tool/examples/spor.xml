@@ -14,12 +14,6 @@
     <init ref="id0"/>
     <transition>
       <source ref="id2"/>
-      <target ref="id0"/>
-      <label kind="guard">x0 &gt; 2</label>
-      <label kind="synchronisation">other?</label>
-    </transition>
-    <transition>
-      <source ref="id2"/>
       <target ref="id2"/>
       <label kind="synchronisation">other?</label>
     </transition>
@@ -31,8 +25,9 @@
       <label kind="assignment">x0 = 0</label>
     </transition>
     <transition>
-      <source ref="id0"/>
+      <source ref="id2"/>
       <target ref="id0"/>
+      <label kind="guard">x0 &gt; 2</label>
       <label kind="synchronisation">other?</label>
     </transition>
     <transition>
@@ -40,6 +35,11 @@
       <target ref="id2"/>
       <label kind="synchronisation">e?</label>
       <label kind="assignment">x0 = 0</label>
+    </transition>
+    <transition>
+      <source ref="id0"/>
+      <target ref="id0"/>
+      <label kind="synchronisation">other?</label>
     </transition>
   </template>
   <template>

@@ -1,13 +1,21 @@
-"""Run CASAAL on every formula of formulas.tsv and count states, transitions,
+r"""Run CASAAL on every formula of formulas.tsv and count states, transitions,
 and clocks of the produced timed Buchi automaton (dot output).
 
-Usage (Windows, from this folder):  python run_casaal.py <path-to-casaal-folder>
-Writes casaal_results.tsv.
+Usage (Windows, from this folder):
+    python run_casaal.py [--exclusive] [path-to-casaal-folder]
+Writes casaal_results.tsv, or casaal_exclusive.tsv with --exclusive: the
+formula is then conjoined with [](!(a /\ b)) for every pair of distinct
+propositions a, b of the formula, so that CASAAL, which reads sets of
+propositions, is restricted to at most one proposition per position, the
+event semantics of mtl2tba (positions where no proposition holds play the
+role of the event "other").
 """
-import os, re, shutil, subprocess, sys, tempfile, time
+import itertools, os, re, shutil, subprocess, sys, tempfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CASAAL_DIR = sys.argv[1] if len(sys.argv) > 1 else r'C:\Users\user\Desktop\casaal\casaal'
+ARGS = [a for a in sys.argv[1:] if a != '--exclusive']
+EXCLUSIVE = '--exclusive' in sys.argv[1:]
+CASAAL_DIR = ARGS[0] if ARGS else r'C:\Users\user\Desktop\casaal\casaal'
 
 
 def formulas():
@@ -16,6 +24,12 @@ def formulas():
             continue
         fid, desc, ours, cas = line.rstrip('\n').split('\t')
         yield fid, desc, ours, cas
+
+
+def exclusive(f):
+    props = sorted(set(re.findall(r'\b[a-z][a-z0-9_]*\b', f)))
+    pairs = [f'([](!({a} /\\ {b})))' for a, b in itertools.combinations(props, 2)]
+    return ' /\\ '.join([f'({f})'] + pairs) if pairs else f
 
 
 def count(dot):
@@ -30,7 +44,8 @@ def main():
     for f in os.listdir(CASAAL_DIR):
         if f.endswith('.exe') or f.endswith('.dll'):
             shutil.copy(os.path.join(CASAAL_DIR, f), work)
-    out = open(os.path.join(HERE, 'casaal_results.tsv'), 'w', encoding='utf-8')
+    name = 'casaal_exclusive.tsv' if EXCLUSIVE else 'casaal_results.tsv'
+    out = open(os.path.join(HERE, name), 'w', encoding='utf-8')
     out.write('id\texact\tstates\ttransitions\tclocks\ttime_s\n')
     for fid, desc, ours, cas in formulas():
         if cas == '-':
@@ -38,6 +53,8 @@ def main():
             continue
         exact = 'no' if cas.startswith('~') else 'yes'
         cas = cas.lstrip('~')
+        if EXCLUSIVE:
+            cas = exclusive(cas)
         open(os.path.join(work, 'f.txt'), 'w').write(cas + '\n')
         dotf = os.path.join(work, 'dot_output.gv')
         if os.path.exists(dotf):
@@ -47,7 +64,11 @@ def main():
             subprocess.run([os.path.join(work, 'casaal.exe'), 'f.txt'], cwd=work,
                            capture_output=True, timeout=600)
             dt = time.time() - t0
-            s, t, c = count(open(dotf).read())
+            dot = open(dotf).read()
+            s, t, c = count(dot)
+            outdir = os.path.join(HERE, 'casaal_out_x' if EXCLUSIVE else 'casaal_out')
+            os.makedirs(outdir, exist_ok=True)
+            open(os.path.join(outdir, fid + '.gv'), 'w').write(dot)
             out.write(f'{fid}\t{exact}\t{s}\t{t}\t{c}\t{dt:.2f}\n')
             print(fid, exact, s, t, c, f'{dt:.2f}s')
         except Exception as e:

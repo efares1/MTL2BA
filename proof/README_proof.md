@@ -12,6 +12,8 @@ post-processing toward UPPAAL; extraction of the code of the tool `mtl2tba`.
 | `MTL_to_TBA_Invariants.v` | location invariants, invariant synthesis, backward propagation, tightening of guards |
 | `MTL_to_TBA_Optimizations.v` | forward propagation, simplification, dead resets, merging of clocks, transitions, and states, normalization, iterated pipeline |
 | `MTL_to_TBA_Export.v` | transition merging, elimination of disjunctive invariants and guards, `MTL_to_exported_correct` |
+| `MTL_to_TBA_Initialization.v` | conventional clock initialization (clocks at 0 at time 0, as in UPPAAL): verified check `init_free` and theorem `MTL_to_exported_correct0_with` |
+| `MTL_to_TBA_Simplify.v` | proved simplification `ltl_simp` of the clocked-LTL formula (trivial operands `true`/`false`) before the LTL-to-Büchi step, and the corresponding end-to-end theorems |
 | `Extract_Optim.v` | extraction to `../tool/src/optim.ml` |
 | `tools/prune_extraction.py` | removes the unused code of the real-number library from the extracted file |
 

@@ -1,37 +1,45 @@
 \begin{table*}[t]
 \centering
-\caption{Evaluation of \texttt{mtl2tba} and comparison with CASAAL. $|X|$: distinct primitive (hatted) timed subformulas of the formula after unfolding of the ordinary operators. Spot: B\"uchi automaton returned by Spot (states/transitions, one transition per cube). Opt.: after reset completion and the verified optimizations (locations/transitions/clocks). Export: automaton for UPPAAL (locations/transitions/clocks/locations with an invariant/difference constraints). Time: whole chain, in seconds. CASAAL: states/transitions/clocks; $\dagger$: not equivalent (CASAAL has no hatted operators).}
+\caption{Evaluation of \texttt{mtl2tba} and comparison with CASAAL on the common semantic domain (one event per position).  $|X|$: distinct primitive (hatted) timed subformulas after unfolding of the ordinary operators.  Spot: B\"uchi automaton returned by Spot (states/transitions, one transition per cube).  Opt.: after reset completion and the verified optimizations (locations/transitions/clocks).  Export: automaton for UPPAAL (locations, transitions, clocks, locations with an invariant, and occurrences of difference constraints in the guards).  Time: median of five runs of the whole chain, in seconds.  CASAAL: states/transitions/clocks of the automaton of CASAAL for the formula conjoined with the mutual exclusion of its propositions; transitions carry Boolean formulas.  $\dagger$: not equivalent (CASAAL has no hatted operator); $\ddagger$: degenerate formula, equivalent to $\Box\neg p$ or $\Box\neg e$ with one event per position.  Formulas: Table~S1 of the supplementary material.}
 \label{tab:evaluation}
 \small
-\begin{tabular}{@{}llrrrrrrrrrrrrr@{}}
+\begin{tabular}{@{}lrrrrrrrrrrrrr@{}}
 \toprule
- & & & \multicolumn{2}{c}{Spot} & \multicolumn{3}{c}{Opt.} & \multicolumn{5}{c}{Export} & & CASAAL\\
-\cmidrule(lr){4-5}\cmidrule(lr){6-8}\cmidrule(lr){9-13}
-Id & Property & $|X|$ & st & tr & loc & tr & clk & loc & tr & clk & inv & diff & Time & st/tr/clk\\
+ & & \multicolumn{2}{c}{Spot} & \multicolumn{3}{c}{Opt.} & \multicolumn{5}{c}{Export} & & CASAAL\\
+\cmidrule(lr){3-4}\cmidrule(lr){5-7}\cmidrule(lr){8-12}
+Id & $|X|$ & st & tr & loc & tr & clk & loc & tr & clk & inv & diff & Time & st/tr/clk\\
 \midrule
-F1 & bounded response & 1 & 3 & 7 & 3 & 7 & 1 & 3 & 7 & 1 & 2 & 0 & 0.02 & 2/4/1\\
-F2 & bounded invariance & 1 & 2 & 5 & 1 & 1 & 0 & 1 & 1 & 0 & 0 & 0 & 0.03 & 2/5/1\\
-F3 & sporadicity (hatted) & 1 & 2 & 5 & 2 & 5 & 1 & 2 & 5 & 1 & 0 & 0 & 0.02 & 3/6/1$^\dagger$\\
-F3b & sporadicity, no hat & 1 & 1 & 1 & 1 & 1 & 0 & 1 & 1 & 0 & 0 & 0 & 0.03 & 1/1/0\\
-F4 & time-bounded Until & 1 & 3 & 7 & 3 & 7 & 1 & 3 & 7 & 1 & 2 & 0 & 0.03 & 2/4/1\\
-F5 & minimum-delay response & 1 & 7 & 38 & 7 & 25 & 1 & 7 & 25 & 1 & 0 & 0 & 0.02 & 4/19/1\\
-F6 & strict minimum-delay response & 1 & 7 & 38 & 7 & 25 & 1 & 7 & 25 & 1 & 0 & 0 & 0.02 & 4/19/1\\
-F7 & bounded recurrence & 1 & 3 & 6 & 3 & 6 & 1 & 3 & 6 & 1 & 2 & 0 & 0.02 & 2/4/1\\
-F8 & recurrence with minimum delay & 1 & 5 & 15 & 5 & 15 & 1 & 5 & 15 & 1 & 0 & 0 & 0.02 & 2/4/1\\
-F9 & Example 1 & 2 & 5 & 16 & 5 & 16 & 2 & 6 & 25 & 2 & 4 & 0 & 0.05 & 4/9/2\\
-F10 & Example 2 & 3 & 6 & 23 & 5 & 16 & 3 & 6 & 25 & 3 & 4 & 0 & 0.05 & 5/12/3\\
-F11 & Example 3 & 2 & 5 & 11 & 4 & 7 & 1 & 4 & 7 & 1 & 2 & 0 & 0.02 & 4/7/2\\
-F12 & response within a window & 2 & 5 & 23 & 4 & 13 & 2 & 4 & 13 & 2 & 3 & 0 & 0.06 & 3/9/2\\
-F13 & periodicity (hatted) & 2 & 6 & 23 & 4 & 9 & 2 & 4 & 9 & 2 & 3 & 0 & 0.03 & 4/7/2$^\dagger$\\
-F14 & closeness & 2 & 8 & 38 & 8 & 25 & 2 & 8 & 28 & 2 & 6 & 2 & 0.06 & 8/22/2\\
-R1 & 1 bounded response & 1 & 3 & 7 & 3 & 7 & 1 & 3 & 7 & 1 & 2 & 0 & 0.04 & 2/4/1\\
-R2 & 2 bounded responses & 2 & 8 & 45 & 7 & 27 & 2 & 7 & 33 & 2 & 6 & 4 & 0.04 & 4/16/2\\
-R3 & 3 bounded responses & 3 & 20 & 275 & 17 & 90 & 3 & 17 & 145 & 3 & 16 & 78 & 0.14 & 8/64/3\\
-R4 & 4 bounded responses & 4 & 48 & 1625 & 41 & 276 & 4 & 41 & 579 & 4 & 40 & 606 & 1.24 & 16/256/4\\
-N1 & nesting depth 1 & 1 & 3 & 5 & 3 & 5 & 1 & 3 & 5 & 1 & 1 & 0 & 0.02 & 3/5/1\\
-N2 & nesting depth 2 & 2 & 5 & 19 & 5 & 14 & 2 & 6 & 26 & 2 & 4 & 4 & 0.02 & 4/9/2\\
-N3 & nesting depth 3 & 3 & 9 & 94 & 9 & 50 & 3 & 14 & 173 & 3 & 12 & 68 & 0.07 & 5/14/3\\
-N4 & nesting depth 4 & 4 & 17 & 501 & 17 & 184 & 4 & 34 & 1035 & 4 & 32 & 672 & 2.24 & 6/20/4\\
+F1 & 1 & 3 & 7 & 3 & 7 & 1 & 3 & 7 & 1 & 2 & 0 & 0.02 & 2/4/1\\
+F2$^\ddagger$ & 1 & 2 & 5 & 1 & 1 & 0 & 1 & 1 & 0 & 0 & 0 & 0.02 & 1/1/0\\
+F3 & 1 & 2 & 5 & 2 & 5 & 1 & 2 & 5 & 1 & 0 & 0 & 0.02 & 3/6/1$^\dagger$\\
+F3b$^\ddagger$ & 1 & 1 & 1 & 1 & 1 & 0 & 1 & 1 & 0 & 0 & 0 & 0.02 & 1/1/0\\
+F4 & 1 & 3 & 7 & 3 & 7 & 1 & 3 & 7 & 1 & 2 & 0 & 0.02 & 2/4/1\\
+F5 & 1 & 7 & 38 & 7 & 25 & 1 & 7 & 25 & 1 & 0 & 0 & 0.03 & 4/15/1\\
+F6 & 1 & 7 & 38 & 7 & 25 & 1 & 7 & 25 & 1 & 0 & 0 & 0.02 & 4/15/1\\
+F7 & 1 & 3 & 6 & 3 & 6 & 1 & 3 & 6 & 1 & 2 & 0 & 0.02 & 2/4/1\\
+F8 & 1 & 5 & 15 & 5 & 15 & 1 & 5 & 15 & 1 & 0 & 0 & 0.02 & 2/4/1\\
+F9 & 2 & 4 & 9 & 4 & 9 & 2 & 4 & 9 & 2 & 2 & 0 & 0.02 & 4/9/2\\
+F10 & 3 & 5 & 13 & 5 & 13 & 3 & 5 & 13 & 3 & 2 & 0 & 0.03 & 5/12/3\\
+F11 & 2 & 5 & 11 & 4 & 7 & 1 & 4 & 7 & 1 & 2 & 0 & 0.02 & 4/7/2\\
+F12 & 2 & 5 & 23 & 4 & 13 & 2 & 4 & 13 & 2 & 3 & 0 & 0.02 & 3/9/2\\
+F13 & 2 & 6 & 23 & 4 & 9 & 2 & 4 & 9 & 2 & 3 & 0 & 0.02 & 4/7/2$^\dagger$\\
+F14 & 2 & 8 & 38 & 8 & 25 & 2 & 8 & 28 & 2 & 6 & 2 & 0.03 & 8/18/2\\
+R1 & 1 & 3 & 7 & 3 & 7 & 1 & 3 & 7 & 1 & 2 & 0 & 0.02 & 2/4/1\\
+R2 & 2 & 8 & 45 & 7 & 27 & 2 & 7 & 33 & 2 & 6 & 4 & 0.04 & 4/12/2\\
+R3 & 3 & 20 & 275 & 17 & 90 & 3 & 17 & 145 & 3 & 16 & 78 & 0.15 & 8/32/3\\
+R4 & 4 & 48 & 1625 & 41 & 276 & 4 & 41 & 579 & 4 & 40 & 606 & 1.63 & 16/80/4\\
+R5 & 5 & 112 & 9375 & 97 & 794 & 5 & 97 & 2077 & 5 & 96 & 3248 & 28.88 & 32/192/5\\
+R6 & \multicolumn{12}{c}{timeout (limit 300~s)} & 64/448/6\\
+R7 & \multicolumn{12}{c}{timeout (limit 300~s)} & 128/1024/7\\
+R8 & \multicolumn{12}{c}{timeout (limit 300~s)} & 256/2304/8\\
+N1 & 1 & 3 & 5 & 3 & 5 & 1 & 3 & 5 & 1 & 1 & 0 & 0.02 & 3/5/1\\
+N2 & 2 & 4 & 11 & 4 & 9 & 2 & 4 & 9 & 2 & 2 & 0 & 0.03 & 4/7/2\\
+N3 & 3 & 5 & 21 & 5 & 16 & 3 & 5 & 16 & 3 & 3 & 0 & 0.04 & 5/9/3\\
+N4 & 4 & 6 & 36 & 6 & 25 & 4 & 6 & 25 & 4 & 4 & 0 & 0.06 & 6/11/4\\
+N5 & 5 & 7 & 57 & 7 & 36 & 5 & 7 & 36 & 5 & 5 & 0 & 0.25 & 7/13/5\\
+N6 & 6 & 8 & 85 & 8 & 49 & 6 & 8 & 49 & 6 & 6 & 0 & 1.54 & 8/15/6\\
+N7 & 7 & 9 & 121 & 9 & 64 & 7 & 9 & 64 & 7 & 7 & 0 & 6.79 & 9/17/7\\
+N8 & 8 & 10 & 166 & 10 & 81 & 8 & 10 & 81 & 8 & 8 & 0 & 85.92 & 10/19/8\\
 \bottomrule
 \end{tabular}
 \end{table*}
