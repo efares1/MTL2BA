@@ -20,5 +20,7 @@ Two safety requirements, each with a correct and a faulty system
 - `explore.py`: independent cross-check by explicit exploration on a 1/4
   time grid; its output is `expected.txt`.
 
-Expected: `E<> P.A4` not satisfied for `*_ok`, satisfied for `*_bad`;
+Results with UPPAAL 5.0.0 (`uppaal_results.txt`, diagnostic traces
+`(e,1)(e,2)` for `spor_bad` and `(p,0.5)(q,6)` for `resp_bad`), equal to the
+expected verdicts: `E<> P.A4` not satisfied for `*_ok`, satisfied for `*_bad`;
 `A[] not deadlock` satisfied for every `*_alone` model.
