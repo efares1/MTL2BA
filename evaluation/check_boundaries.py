@@ -42,28 +42,35 @@ def parse_dot(path):
             acc.add(name)
         parts = label.split('\\n')[1:]
         inv[name] = [parse_constraint(c) for p in parts for c in p.split('&&')]
+    # symbolic transitions (Coq: symbolic): one line per case "guard: events"
+    # or "events", and a last line "x, y := 0" for the resets
     edges = []
     for m in re.finditer(r'\n\s*(L\d+) -> (L\d+) \[label="([^"]*)"\]', s):
         src, tgt, label = m.groups()
-        lines = label.split('\\n')
-        guard, events, resets = [], None, []
-        for ln in lines:
+        cases, resets = [], []
+        for ln in label.split('\\n'):
             if ':=' in ln:
                 resets = re.findall(r'x\d+', ln)
-            elif re.search(r'x\d+', ln):
-                guard = [parse_constraint(c) for c in ln.split('&&')]
-            elif ln.strip():
-                events = [e.strip() for e in ln.split(',')]
-        edges.append((src, tgt, guard, events, resets))
+                continue
+            if ': ' in ln:
+                g, ev = ln.split(': ', 1)
+                guard = [parse_constraint(c) for c in g.split('&&')]
+            else:
+                guard, ev = [], ln
+            cases.append((guard, [e.strip() for e in ev.split('|')]))
+        edges.append((src, tgt, cases, resets))
     clocks = sorted(set(re.findall(r'\bx\d+\b', s)))
     sinks = {l for l in acc if not inv.get(l)
-             and any(e[0] == l and e[1] == l and e[3] == ['any'] for e in edges)}
+             and any(e[0] == l and e[1] == l and any(c[1] == ['any'] and not c[0] for c in e[2])
+                     for e in edges)}
     return init, edges, inv, clocks, sinks
 
 
 def event_matches(events, a, alphabet):
-    if events is None or events == ['any']:
+    if events == ['any']:
         return True
+    if events == ['false']:
+        return False
     if a in events:
         return True
     return 'other' in events and a not in alphabet
@@ -81,8 +88,9 @@ def violation(path, word, alphabet):
             v = {x: val + d for x, val in v.items()}
             if not all(c(v) for c in inv.get(loc, [])):
                 continue
-            for src, tgt, guard, events, resets in edges:
-                if src == loc and event_matches(events, a, alphabet) and all(c(v) for c in guard):
+            for src, tgt, cases, resets in edges:
+                if src == loc and any(event_matches(ev, a, alphabet) and all(c(v) for c in g)
+                                      for g, ev in cases):
                     v2 = dict(v)
                     for x in resets:
                         v2[x] = 0.0
