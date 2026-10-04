@@ -1,4 +1,4 @@
-# MTL2BA
+# MTL2TBA
 
 Verified translation of MTL(0,inf) into timed Büchi automata, companion of
 the paper *A Mechanically Verified Translation of MTL(0,inf) into Timed
