@@ -147,20 +147,20 @@ L = [r'\begin{table*}[t]', r'\centering',
      r'$\Box\neg e$ with one event per position.  CASAAL time: wall-clock time, '
      r'median of five runs, in seconds, including the start of the process.  TO: the chain exceeds '
      r'the limit of 300~s (wall-clock, per run).  Lang.: comparison of the languages with '
-     r"those of CASAAL by TChecker (Section~\ref{sec:evaluation}, paragraph ``Comparison of languages with CASAAL''): exp, equal languages "
-     r'checked on the exported automaton; cmp, checked only on the automaton '
-     r'$\mathsf{compile}(f)$ before post-processing and export; ?, no conclusion within '
-     r'the limits; --, formulas not equivalent.  Equal sizes do not by themselves imply '
-     r'equal languages.  Formulas: Table~\ref{tab:formulas} of the '
+     r"those of CASAAL by TChecker (Section~\ref{sec:evaluation}, paragraph ``Comparison of languages with CASAAL''): exp, inclusion "
+     r"of the languages of CASAAL's automata into ours established on the exported automaton; cmp, "
+     r'established only on the automaton $\mathsf{compile}(f)$ before post-processing; ?, no '
+     r'conclusion within the limits; --, formulas not equivalent.  Equal sizes do not by '
+     r'themselves imply equal languages.  Formulas: Table~\ref{tab:formulas} of the '
      r'supplementary material.}',
      r'\label{tab:evaluation}', r'\small',
      r'\setlength{\tabcolsep}{4.5pt}',
      r'\begin{tabular}{@{}lrrrrrrrrrrrrrrrc@{}}', r'\toprule',
      r' & & \multicolumn{2}{c}{Spot} & \multicolumn{3}{c}{Opt.} & '
-     r'\multicolumn{5}{c}{Export} & & & \multicolumn{2}{c}{CASAAL}\\',
+     r'\multicolumn{5}{c}{Export} & & & \multicolumn{2}{c}{CASAAL} & \\',
      r'\cmidrule(lr){3-4}\cmidrule(lr){5-7}\cmidrule(lr){8-12}\cmidrule(lr){15-16}',
      r'Id & $|X|$ & st & tr & loc & tr & clk & loc & tr & clk & inv & diff & Sym. '
-     r'& Time & st/tr/clk & Time\\', r'\midrule']
+     r'& Time & st/tr/clk & Time & Lang.\\', r'\midrule']
 
 
 def casaal_time(d):
