@@ -3,7 +3,8 @@
      mtl2tba [options] 'formula'
 
    Chain:
-     1. parsing and negation normal form          (prototype: lexer, parser, Mtl)
+     1. parsing                                    (prototype: lexer, parser, Mtl)
+        negation normal form                       (extracted from Coq: neg)
      2. derivation of the ordinary timed operators (extracted from Coq: MUle, ...)
      3. clocked-LTL translation T                  (extracted from Coq)
      4. LTL -> Buchi automaton                     (Spot, ltl2tgba)
@@ -28,6 +29,8 @@ let stats = ref false
 let pdf = ref true
 let dot_cmd = ref "dot"
 let simp = ref false
+let check = ref ""
+let weak_until = ref false
 
 let stats_header = String.concat "	"
   [ "formula_clocks"; "spot_states"; "spot_trans"; "spot_s";
@@ -39,12 +42,14 @@ let stats_header = String.concat "	"
 let speclist = [
   ("-o", Arg.Set_string out, "<base> output files <base>.xml and <base>.dot (default: out)");
   ("-simp", Arg.Set simp, " simplify the trivial operands of the clocked-LTL formula before Spot (proved; Spot does it anyway)");
+  ("-weak", Arg.Set weak_until, " replace the Until of the clauses of upper-bounded hatted Until by a weak until (proved: MTL_to_exported_correct_weak_with)");
   ("-init", Arg.Set with_init, " add an initialization event _init_ fixing the time origin");
   ("-n", Arg.Set_int rounds, "<n> maximal number of optimization rounds (default: 50)");
   ("-spot", Arg.Set_string spot, "<cmd> LTL-to-Buchi command (default: ltl2tgba)");
   ("-nopdf", Arg.Clear pdf, " do not run Graphviz to produce <base>.pdf from <base>.dot");
   ("-dot", Arg.Set_string dot_cmd, "<cmd> Graphviz command (default: dot)");
   ("-tba", Arg.Set dump_tba, " also write <base>_tba.dot and <base>_opt.dot");
+  ("-check", Arg.Set_string check, "<base> also write <base>_ltl.lbt (the clocked-LTL formula, in prefix notation, by a second printer) and <base>_ba.hoa (the automaton built by the reader), for the validation of the trusted interface with Spot");
   ("-v", Arg.Set verbose, " print the intermediate results");
   ("-stats", Arg.Set stats, " print one tab-separated line of measures (see -stats-header)");
   ("-stats-header", Arg.Unit (fun () -> print_endline stats_header; exit 0), " print the header of -stats");
@@ -93,6 +98,7 @@ let rec conv (f : Mtl.mtl) : mtl =
   | Mtl.Event s -> MAtom (event s)
   | Mtl.NEvent s -> MNotAtom (event s)
   | Mtl.Next p -> MNext (conv p)
+  | Mtl.Not p -> neg (conv p)
   | Mtl.And (p, q) -> MAnd (conv p, conv q)
   | Mtl.Or (p, q) -> MOr (conv p, conv q)
   | Mtl.Until (c, p, q) ->
@@ -175,6 +181,47 @@ let rec spot_formula nm = function
   | LUntil (p, q) -> "(" ^ spot_formula nm p ^ " U " ^ spot_formula nm q ^ ")"
   | LRelease (p, q) -> "(" ^ spot_formula nm p ^ " R " ^ spot_formula nm q ^ ")"
 
+(* Second printer of the clocked-LTL formula, in the prefix (LBT) notation
+   of Spot, written independently of [spot_formula]: comparing what Spot
+   reads from both texts checks the printing of T(f) (option -check). *)
+let rec lbt_formula nm = function
+  | LTrue -> "t"
+  | LFalse -> "f"
+  | LAtom a -> "\"" ^ nm a ^ "\""
+  | LAnd (p, q) -> "& " ^ lbt_formula nm p ^ " " ^ lbt_formula nm q
+  | LOr (p, q) -> "| " ^ lbt_formula nm p ^ " " ^ lbt_formula nm q
+  | LNext p -> "X " ^ lbt_formula nm p
+  | LUntil (p, q) -> "U " ^ lbt_formula nm p ^ " " ^ lbt_formula nm q
+  | LRelease (p, q) -> "V " ^ lbt_formula nm p ^ " " ^ lbt_formula nm q
+
+(* The propositional Buchi automaton built by the reader, in the HOA format,
+   with state-based acceptance: comparing it with the raw output of Spot
+   (autfilt --equivalent-to) checks the reader (option -check). *)
+let hoa_of_pbuchi nm (b : pBuchi) =
+  let aps = List.sort_uniq compare
+      (List.concat_map (fun t -> List.map (fun (a, _) -> nm a) t.pt_label) b.pb_trans) in
+  let idx s =
+    let rec go i = function [] -> assert false | x :: l -> if x = s then i else go (i + 1) l in
+    go 0 aps in
+  let buf = Buffer.create 4096 in
+  let pr fmt = Printf.bprintf buf fmt in
+  pr "HOA: v1\nStates: %d\nStart: %d\n" b.pb_nstates b.pb_init;
+  pr "AP: %d%s\n" (List.length aps)
+    (String.concat "" (List.map (fun s -> " \"" ^ s ^ "\"") aps));
+  pr "acc-name: Buchi\nAcceptance: 1 Inf(0)\nproperties: state-acc\n--BODY--\n";
+  for s = 0 to b.pb_nstates - 1 do
+    pr "State: %d%s\n" s (if List.mem s b.pb_accepting then " {0}" else "");
+    List.iter (fun t ->
+        if t.pt_src = s then begin
+          let lit (a, pos) = (if pos then "" else "!") ^ string_of_int (idx (nm a)) in
+          let lab = match t.pt_label with
+            | [] -> "t" | l -> String.concat "&" (List.map lit l) in
+          pr "[%s] %d\n" lab t.pt_tgt
+        end) b.pb_trans
+  done;
+  pr "--END--\n";
+  Buffer.contents buf
+
 let read_file f = In_channel.with_open_bin f In_channel.input_all
 
 let run_spot ltl_text =
@@ -238,7 +285,7 @@ let () =
   (* 1-2 *)
   let t_start = Unix.gettimeofday () in
   let f = parse_formula !formula in
-  let f = if !with_init then Mtl2mtl.add_init f else f in
+  let f = if !with_init then Mtl2mtl.add_init (Mtl.push_neg f) else f in
   log "formula: %s" (Format.asprintf "%a" Mtl.pp_mtl f);
   List.iter (fun e -> ignore (event e)) (Mtl.get_evts f);
   let root = conv f in
@@ -251,7 +298,10 @@ let () =
   let ltl = t root in
   (* proved simplification (Coq: ltl_simp_correct); the atoms of T f are kept
      in atom_tbl, a superset of those of the simplified formula *)
-  let ltl_text = spot_formula nm (if !simp then ltl_simp root ltl else ltl) in
+  (* proved rewriting into a weak until (Coq: MTL_to_exported_correct_weak_with) *)
+  let ltl_sent = if !weak_until then weak root ltl else ltl in
+  let ltl_sent = if !simp then ltl_simp root ltl_sent else ltl_sent in
+  let ltl_text = spot_formula nm ltl_sent in
   log "clocked LTL: %s" ltl_text;
   let atom_tbl = Hashtbl.create 16 in
   List.iter (fun a -> Hashtbl.replace atom_tbl (nm a) a) (ltl_atoms root ltl);
@@ -264,6 +314,13 @@ let () =
   log "Spot: %d states, %d transitions" lbtt.Lbtt_read.nstates
     (List.length lbtt.Lbtt_read.trans);
   let ba = to_pbuchi lbtt atom_of in
+  if !check <> "" then begin
+    Out_channel.with_open_bin (!check ^ "_ltl.lbt") (fun oc ->
+        output_string oc (lbt_formula nm ltl_sent);
+        output_string oc "\n");
+    Out_channel.with_open_bin (!check ^ "_ba.hoa") (fun oc ->
+        output_string oc (hoa_of_pbuchi nm ba))
+  end;
   (* 5 *)
   let tba = compile_with root ba in
   let (s0, t0, c0) = size_tba tba in

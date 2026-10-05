@@ -110,26 +110,38 @@ L = [r'\begin{table*}[t]', r'\centering',
      r'formula conjoined with the mutual exclusion of its propositions; transitions '
      r'carry Boolean formulas.  $\dagger$: not equivalent (CASAAL has no hatted '
      r'operator); $\ddagger$: degenerate formula, equivalent to $\Box\neg p$ or '
-     r'$\Box\neg e$ with one event per position.  Formulas: Table~\ref{tab:formulas} of the '
+     r'$\Box\neg e$ with one event per position.  CASAAL time: wall-clock time, '
+     r'median of five runs, in seconds, including the start of the process.  TO: the chain exceeds '
+     r'the limit of 300~s (wall-clock, per run).  Formulas: Table~\ref{tab:formulas} of the '
      r'supplementary material.}',
      r'\label{tab:evaluation}', r'\small',
-     r'\begin{tabular}{@{}lrrrrrrrrrrrrrr@{}}', r'\toprule',
+     r'\setlength{\tabcolsep}{4.5pt}',
+     r'\begin{tabular}{@{}lrrrrrrrrrrrrrrr@{}}', r'\toprule',
      r' & & \multicolumn{2}{c}{Spot} & \multicolumn{3}{c}{Opt.} & '
-     r'\multicolumn{5}{c}{Export} & & & CASAAL\\',
-     r'\cmidrule(lr){3-4}\cmidrule(lr){5-7}\cmidrule(lr){8-12}',
+     r'\multicolumn{5}{c}{Export} & & & \multicolumn{2}{c}{CASAAL}\\',
+     r'\cmidrule(lr){3-4}\cmidrule(lr){5-7}\cmidrule(lr){8-12}\cmidrule(lr){15-16}',
      r'Id & $|X|$ & st & tr & loc & tr & clk & loc & tr & clk & inv & diff & Sym. '
-     r'& Time & st/tr/clk\\', r'\midrule']
+     r'& Time & st/tr/clk & Time\\', r'\midrule']
+
+
+def casaal_time(d):
+    t = d.get('casaal_x_s', '')
+    try:
+        return f"{float(t):.2f}"
+    except ValueError:
+        return '--'
 for fid, desc, _, _ in forms:
     d = R[fid]
     name = fid + (r'$^\ddagger$' if fid in DEGENERATE else '')
     if d['status'] != 'ok':
-        L.append(f"{name} & \\multicolumn{{13}}{{c}}{{{d['status']} (limit 300~s)}} & "
-                 f"{casaal_cell(d)}\\\\")
+        nx = d['clocks_f'] or (fid[1:] if fid[0] in 'RN' else '')
+        L.append(f"{name} & {nx} & \\multicolumn{{12}}{{c}}{{TO}} & "
+                 f"{casaal_cell(d)} & {casaal_time(d)}\\\\")
         continue
     L.append(f"{name} & {d['clocks_f']} & {d['spot_st']} & {d['spot_tr']} & {d['opt_st']} & "
              f"{d['opt_tr']} & {d['opt_clk']} & {d['exp_st']} & {d['exp_tr']} & "
              f"{d['exp_clk']} & {d['exp_inv']} & {d['exp_diff']} & {d['sym_tr']} & "
-             f"{float(d['total_s']):.2f} & {casaal_cell(d)}\\\\")
+             f"{float(d['total_s']):.2f} & {casaal_cell(d)} & {casaal_time(d)}\\\\")
 L += [r'\bottomrule', r'\end{tabular}', r'\end{table*}']
 open(os.path.join(HERE, 'results_table.tex'), 'w', encoding='utf-8').write('\n'.join(L) + '\n')
 
@@ -184,13 +196,13 @@ open(os.path.join(HERE, 'formulas_table.tex'), 'w', encoding='utf-8').write('\n'
 # ------------------------------------------------------------ primed configurations
 weak = read('weak_results.tsv')
 Wt = [r'\begin{table}[t]', r'\centering',
-      r'\caption{Primed configurations: the Until of the clauses of upper-bounded '
+      r'\caption{Primed configurations (option \texttt{-weak}, proved): the Until of the clauses of upper-bounded '
       r'hatted Until is replaced by a weak until in the formula given to Spot, which '
       r'removes the degeneralization of the B\"uchi acceptance (configurations whose '
       r'formula changes and whose sizes differ).  Spot: states/transitions; Opt.: '
       r'locations/transitions; Sym.: symbolic transitions of the unprimed and primed '
       r'configurations ($\mathsf{U}$: unprimed, $\mathsf{W}$: primed); Time: median of '
-      r'five runs of the primed configuration, in seconds; CASAAL: states/transitions '
+      r'five runs of the primed configuration (option \texttt{-weak}), in seconds; CASAAL: states/transitions '
       r'on the common domain, $^\dagger$ as in Table~\ref{tab:evaluation}.  The export '
       r'does not change the number of locations.}',
       r'\label{tab:weak}', r'\footnotesize', r'\setlength{\tabcolsep}{3pt}',

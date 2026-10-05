@@ -1,0 +1,12 @@
+# Coq build products
+*.vo
+*.vok
+*.vos
+*.glob
+*.aux
+.lia.cache
+.nia.cache
+proof/optim.ml
+proof/optim.mli
+# OCaml build
+_build/

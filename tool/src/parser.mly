@@ -42,15 +42,15 @@ mtl:
   | e=EVENT  { Event e }
   | TRUE { True }
   | FALSE { False }
-  | NOT m=mtl  { mtl_not m } 
+  | NOT m=mtl  { Not m } 
   | BOX c=ctr m=mtl  { mtl_box c m } 
   | XBOX c=ctr m=mtl  { mtl_xbox c m } 
   | DIAM c=ctr m=mtl  { mtl_diam c m } 
   | XDIAM c=ctr m=mtl  { mtl_xdiam c m } 
   | NEXT p=mtl { Next p }
   | p1=mtl AND p2=mtl  { And(p1,p2) } 
-  | p1=mtl IMP p2=mtl  { Or(mtl_not p1,p2) } 
-  | p1=mtl EQV p2=mtl  { And(Or(mtl_not p1,p2),Or(mtl_not p2,p1)) }
+  | p1=mtl IMP p2=mtl  { Or(Not p1,p2) } 
+  | p1=mtl EQV p2=mtl  { And(Or(Not p1,p2),Or(Not p2,p1)) }
   | p1=mtl OR p2=mtl  { Or(p1,p2) }
   | p1=mtl UNTIL c=ctr p2=mtl  { Until(c,p1,p2) }
   | p1=mtl RELEASE c=ctr p2=mtl  { Release(c,p1,p2) }

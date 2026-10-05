@@ -2,7 +2,8 @@ r"""Run CASAAL on every formula of formulas.tsv and count states, transitions,
 and clocks of the produced timed Buchi automaton (dot output).
 
 Usage (Windows, from this folder):
-    python run_casaal.py [--exclusive] [path-to-casaal-folder]
+    python run_casaal.py [--exclusive] [--runs=N] [path-to-casaal-folder]
+(--runs=N: time is the median of N runs, wall-clock, including the start of the process)
 Writes casaal_results.tsv, or casaal_exclusive.tsv with --exclusive: the
 formula is then conjoined with [](!(a /\ b)) for every pair of distinct
 propositions a, b of the formula, so that CASAAL, which reads sets of
@@ -13,7 +14,8 @@ role of the event "other").
 import itertools, os, re, shutil, subprocess, sys, tempfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ARGS = [a for a in sys.argv[1:] if a != '--exclusive']
+ARGS = [a for a in sys.argv[1:] if not a.startswith('--')]
+RUNS = next((int(a.split('=')[1]) for a in sys.argv[1:] if a.startswith('--runs=')), 1)
 EXCLUSIVE = '--exclusive' in sys.argv[1:]
 CASAAL_DIR = ARGS[0] if ARGS else r'C:\Users\user\Desktop\casaal\casaal'
 
@@ -59,11 +61,17 @@ def main():
         dotf = os.path.join(work, 'dot_output.gv')
         if os.path.exists(dotf):
             os.remove(dotf)
-        t0 = time.time()
         try:
-            subprocess.run([os.path.join(work, 'casaal.exe'), 'f.txt'], cwd=work,
-                           capture_output=True, timeout=600)
-            dt = time.time() - t0
+            times = []
+            for _ in range(RUNS):
+                if os.path.exists(dotf):
+                    os.remove(dotf)
+                t0 = time.time()
+                subprocess.run([os.path.join(work, 'casaal.exe'), 'f.txt'], cwd=work,
+                               capture_output=True, timeout=600)
+                times.append(time.time() - t0)
+            times.sort()
+            dt = times[len(times) // 2]   # median of the runs
             dot = open(dotf).read()
             s, t, c = count(dot)
             outdir = os.path.join(HERE, 'casaal_out_x' if EXCLUSIVE else 'casaal_out')

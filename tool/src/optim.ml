@@ -2237,6 +2237,71 @@ let symbolic root d =
     (group0 root d.dta_trans); sdta_accepting = d.dta_accepting; sdta_inv =
     d.dta_inv }
 
+(** val neg : mtl -> mtl **)
+
+let rec neg = function
+| MTrue -> MFalse
+| MFalse -> MTrue
+| MAtom a -> MNotAtom a
+| MNotAtom a -> MAtom a
+| MAnd (p, q0) -> MOr ((neg p), (neg q0))
+| MOr (p, q0) -> MAnd ((neg p), (neg q0))
+| MNext p -> MNext (neg p)
+| MU (p, q0) -> MR ((neg p), (neg q0))
+| MR (p, q0) -> MU ((neg p), (neg q0))
+| MUhatLe (d, p, q0) -> MRhatLe (d, (neg p), (neg q0))
+| MUhatGe (d, p, q0) -> MRhatGe (d, (neg p), (neg q0))
+| MRhatLe (d, p, q0) -> MUhatLe (d, (neg p), (neg q0))
+| MRhatGe (d, p, q0) -> MUhatGe (d, (neg p), (neg q0))
+| MUhatLt (d, p, q0) -> MRhatLt (d, (neg p), (neg q0))
+| MUhatGt (d, p, q0) -> MRhatGt (d, (neg p), (neg q0))
+| MRhatLt (d, p, q0) -> MUhatLt (d, (neg p), (neg q0))
+| MRhatGt (d, p, q0) -> MUhatGt (d, (neg p), (neg q0))
+
+(** val upper_wait : mtl -> ltl -> bool **)
+
+let upper_wait root = function
+| LAnd (l, l0) ->
+  (match l with
+   | LAtom l1 ->
+     (match l1 with
+      | LCLe (x, _) ->
+        (match l0 with
+         | LAnd (l2, _) ->
+           (match l2 with
+            | LAtom l4 ->
+              (match l4 with
+               | LUnch y -> if clock_eq_dec root x y then true else false
+               | _ -> false)
+            | _ -> false)
+         | _ -> false)
+      | LCLt (x, _) ->
+        (match l0 with
+         | LAnd (l2, _) ->
+           (match l2 with
+            | LAtom l4 ->
+              (match l4 with
+               | LUnch y -> if clock_eq_dec root x y then true else false
+               | _ -> false)
+            | _ -> false)
+         | _ -> false)
+      | _ -> false)
+   | _ -> false)
+| _ -> false
+
+(** val weak : mtl -> ltl -> ltl **)
+
+let rec weak root f = match f with
+| LAnd (p, q0) -> LAnd ((weak root p), (weak root q0))
+| LOr (p, q0) -> LOr ((weak root p), (weak root q0))
+| LNext p -> LNext (weak root p)
+| LUntil (p, q0) ->
+  if upper_wait root p
+  then lW root (weak root p) (weak root q0)
+  else LUntil ((weak root p), (weak root q0))
+| LRelease (p, q0) -> LRelease ((weak root p), (weak root q0))
+| _ -> f
+
 (** val optimize_export : mtl -> int -> tBA -> dTA **)
 
 let optimize_export root n a =

@@ -14,7 +14,8 @@
   Writes `ours_runs.tsv` (every run), `ours_results.tsv` (medians, via
   `summarize_runs.py`), `spot_small.tsv`, `machine.txt`, and the automata in
   `out/`.
-- `run_casaal.py`: runs CASAAL (Windows executable) on every formula; writes
+- `run_casaal.py`: runs CASAAL (Windows executable) on every formula (option
+  `--runs=5`: median of five runs, used for the article); writes
   `casaal_results.tsv`.  With `--exclusive`, the formula is conjoined with
   `[](!(a /\ b))` for every pair of distinct propositions, so that CASAAL
   reads at most one proposition per position, the event semantics of
@@ -29,12 +30,12 @@
   finite timed words, with clocks starting at 0 as in UPPAAL, and checks that
   the accepting sink (violation) is reached exactly when expected.  These
   checks validate the implementation; they do not replace the proof.
-- `run_weak_eval.sh`, `spot_weak.py`: primed configurations (measurement of the
-  effect of the degeneralization of the Büchi acceptance): `spot_weak.py`,
-  given to `mtl2tba` through its option `-spot`, replaces the Until of the
-  clauses of upper-bounded hatted Until by a weak until before calling Spot;
-  the tool itself does not perform this replacement.  Writes
-  `weak_runs.tsv`, `weak_results.tsv`, and `weak_table.tex` (Table 7).
+- `run_weak_eval.sh`: primed configurations, translated with the option
+  `-weak` of the tool, which replaces the Until of the clauses of
+  upper-bounded hatted Until by a weak until (proved:
+  `MTL_to_exported_correct_weak_with`); writes `weak_runs.tsv` and
+  `weak_results.tsv`.  `spot_weak.py` is the earlier text-level experiment,
+  kept for reference; it gives the same sizes.
 - `run_spot_validation.sh`: translation validation of the Spot step, the only
   hypothesis of the end-to-end theorem.  The tool runs unchanged, with
   `-spot spot_tee.sh`, a wrapper that calls `ltl2tgba` with the arguments of
@@ -48,6 +49,13 @@
   Result (`spot_validation.tsv`): equivalent on the 28 configurations other
   than R6 to R8; on R6 and R7 the equivalence check exceeds 600 s, and on R8
   Spot does not answer within 300 s.
+- `run_interface_check.sh`: check of the trusted interface with Spot (option
+  `-check` of the tool): Spot reads the same formula from the text given to
+  `ltl2tgba` and from a second, independent prefix printer of T(f), and the
+  automaton built by the reader is equivalent to the raw output of Spot
+  (`autfilt --equivalent-to`).  Result (`interface_check.tsv`): both checks
+  pass on the 30 configurations where Spot answers (all but R8).
+- `tf_sizes.tsv`: size of the formula T(f) given to Spot (characters, atoms).
 - `run_acceptance_eval.sh`: size of the automaton returned by Spot for every
   configuration, with Until or weak until in the upper-bounded clauses, and
   with state-based (`-B`, used by the tool), transition-based (`-b`), and

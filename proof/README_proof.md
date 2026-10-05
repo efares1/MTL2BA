@@ -15,6 +15,8 @@ post-processing toward UPPAAL; extraction of the code of the tool `mtl2tba`.
 | `MTL_to_TBA_Initialization.v` | conventional clock initialization (clocks at 0 at time 0, as in UPPAAL): verified check `init_free` and theorem `MTL_to_exported_correct0_with` |
 | `MTL_to_TBA_Simplify.v` | proved simplification `ltl_simp` of the clocked-LTL formula (trivial operands `true`/`false`) before the LTL-to-Büchi step, and the corresponding end-to-end theorems |
 | `MTL_to_TBA_Symbolic.v` | symbolic automaton: merging of the transitions with the same source, target, and resets, with Boolean labels (sets of events and clock constraints); `MTL_to_symbolic_correct_with` and `MTL_to_symbolic_correct0_with` |
+| `MTL_to_TBA_Negation.v` | negation normal form: `neg` and `neg_correct` (`msat w i (neg f) <-> ~ msat w i f`), `neg_well_formed`; the tool computes every negation of its input with the extracted `neg` |
+| `MTL_to_TBA_Weak.v` | weak until in the clauses of upper-bounded hatted Until: `weak`, `weak_correct` (equivalence on clock-consistent extensions), and the end-to-end theorems `MTL_to_exported_correct_weak_with` and `MTL_to_exported_correct0_weak_with` (option `-weak` of the tool) |
 | `Extract_Optim.v` | extraction to `../tool/src/optim.ml` |
 | `tools/prune_extraction.py` | removes the unused code of the real-number library from the extracted file |
 

@@ -24,10 +24,12 @@ type mtl =
 | XUntil of ctr * mtl * mtl
 | Release of ctr * mtl * mtl
 | XRelease of ctr * mtl * mtl
+| Not of mtl
 
 let rec get_evts = function
     Event s -> [s]
-  | Next m -> get_evts m
+  | NEvent s -> [s]
+  | Next m | Not m -> get_evts m
   | Or(m1,m2) | And(m1,m2) | Until(_,m1,m2) | XUntil(_,m1,m2)
     | Release(_,m1,m2) | XRelease(_,m1,m2)
     -> List.sort_uniq compare (get_evts m1 @ get_evts m2)
@@ -65,6 +67,21 @@ let rec mtl_not = function
 | XUntil(c,p1,p2) -> XRelease(c,mtl_not p1, mtl_not p2)
 | Release(c,p1,p2) -> Until(c,mtl_not p1, mtl_not p2)
 | XRelease(c,p1,p2) -> XUntil(c,mtl_not p1, mtl_not p2)
+| Not p -> push_neg p
+
+(* negation normal form of the prototype syntax, used only by the option
+   -init (Mtl2mtl.add_init); otherwise negations are handled by the
+   extracted, proved function [neg] (Coq: neg_correct) *)
+and push_neg = function
+| Not p -> mtl_not p
+| Next p -> Next (push_neg p)
+| Or(p1,p2) -> Or (push_neg p1, push_neg p2)
+| And(p1,p2) -> And (push_neg p1, push_neg p2)
+| Until(c,p1,p2) -> Until(c, push_neg p1, push_neg p2)
+| XUntil(c,p1,p2) -> XUntil(c, push_neg p1, push_neg p2)
+| Release(c,p1,p2) -> Release(c, push_neg p1, push_neg p2)
+| XRelease(c,p1,p2) -> XRelease(c, push_neg p1, push_neg p2)
+| p -> p
 
 let mtl_box c p = Release(c,False,p)
 let mtl_xbox c p = XRelease(c,False,p)
@@ -90,6 +107,7 @@ let rec pp_mtl oc = function
   | XUntil(c,p1,p2) -> Format.fprintf oc "(%a ^U%a %a)" pp_mtl p1 pp_ctr c pp_mtl p2
   | Release(c,p1,p2) -> Format.fprintf oc "(%a R%a %a)" pp_mtl p1 pp_ctr c pp_mtl p2
   | XRelease(c,p1,p2) -> Format.fprintf oc "(%a ^R%a %a)" pp_mtl p1 pp_ctr c pp_mtl p2
+  | Not p -> Format.fprintf oc "!(%a)" pp_mtl p
 
 (***************** EVB product printer ***************)
 

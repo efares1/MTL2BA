@@ -1,6 +1,6 @@
 \begin{table}[t]
 \centering
-\caption{Primed configurations: the Until of the clauses of upper-bounded hatted Until is replaced by a weak until in the formula given to Spot, which removes the degeneralization of the B\"uchi acceptance (configurations whose formula changes and whose sizes differ).  Spot: states/transitions; Opt.: locations/transitions; Sym.: symbolic transitions of the unprimed and primed configurations ($\mathsf{U}$: unprimed, $\mathsf{W}$: primed); Time: median of five runs of the primed configuration, in seconds; CASAAL: states/transitions on the common domain, $^\dagger$ as in Table~\ref{tab:evaluation}.  The export does not change the number of locations.}
+\caption{Primed configurations (option \texttt{-weak}, proved): the Until of the clauses of upper-bounded hatted Until is replaced by a weak until in the formula given to Spot, which removes the degeneralization of the B\"uchi acceptance (configurations whose formula changes and whose sizes differ).  Spot: states/transitions; Opt.: locations/transitions; Sym.: symbolic transitions of the unprimed and primed configurations ($\mathsf{U}$: unprimed, $\mathsf{W}$: primed); Time: median of five runs of the primed configuration (option \texttt{-weak}), in seconds; CASAAL: states/transitions on the common domain, $^\dagger$ as in Table~\ref{tab:evaluation}.  The export does not change the number of locations.}
 \label{tab:weak}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
@@ -10,18 +10,18 @@
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
 Id & st & tr & loc & tr & $\mathsf{U}$ & $\mathsf{W}$ & Time & CASAAL\\
 \midrule
-F1$'$ & 2 & 5 & 2 & 5 & 6 & 4 & 0.09 & 2/4\\
-F4$'$ & 2 & 5 & 2 & 5 & 6 & 4 & 0.09 & 2/4\\
-F7$'$ & 2 & 4 & 2 & 4 & 6 & 4 & 0.09 & 2/4\\
-F12$'$ & 4 & 17 & 3 & 9 & 13 & 9 & 0.09 & 3/9\\
-F13$'$ & 5 & 17 & 3 & 8 & 9 & 8 & 0.12 & 4/7$^\dagger$\\
-F14$'$ & 6 & 26 & 6 & 17 & 20 & 14 & 0.16 & 8/18\\
-R1$'$ & 2 & 5 & 2 & 5 & 6 & 4 & 0.09 & 2/4\\
-R2$'$ & 4 & 25 & 4 & 16 & 21 & 12 & 0.10 & 4/12\\
-R3$'$ & 8 & 125 & 8 & 44 & 68 & 32 & 0.14 & 8/32\\
+F1$'$ & 2 & 5 & 2 & 5 & 6 & 4 & 0.02 & 2/4\\
+F4$'$ & 2 & 5 & 2 & 5 & 6 & 4 & 0.03 & 2/4\\
+F7$'$ & 2 & 4 & 2 & 4 & 6 & 4 & 0.03 & 2/4\\
+F12$'$ & 4 & 17 & 3 & 9 & 13 & 9 & 0.03 & 3/9\\
+F13$'$ & 5 & 17 & 3 & 8 & 9 & 8 & 0.03 & 4/7$^\dagger$\\
+F14$'$ & 6 & 26 & 6 & 17 & 20 & 14 & 0.04 & 8/18\\
+R1$'$ & 2 & 5 & 2 & 5 & 6 & 4 & 0.03 & 2/4\\
+R2$'$ & 4 & 25 & 4 & 16 & 21 & 12 & 0.03 & 4/12\\
+R3$'$ & 8 & 125 & 8 & 44 & 68 & 32 & 0.05 & 8/32\\
 R4$'$ & 16 & 625 & 16 & 112 & 205 & 80 & 0.35 & 16/80\\
-R5$'$ & 32 & 3125 & 32 & 272 & 582 & 192 & 2.90 & 32/192\\
-R6$'$ & 64 & 15625 & 64 & 640 & timeout & 448 & 36.45 & 64/448\\
+R5$'$ & 32 & 3125 & 32 & 272 & 582 & 192 & 3.69 & 32/192\\
+R6$'$ & 64 & 15625 & 64 & 640 & timeout & 448 & 58.48 & 64/448\\
 R7$'$ & \multicolumn{7}{c}{timeout (limit 300~s)} & 128/1024\\
 R8$'$ & \multicolumn{7}{c}{timeout (limit 300~s)} & 256/2304\\
 \bottomrule
