@@ -147,7 +147,7 @@ L = [r'\begin{table*}[t]', r'\centering',
      r'$\Box\neg e$ with one event per position.  CASAAL time: wall-clock time, '
      r'median of five runs, in seconds, including the start of the process.  TO: the chain exceeds '
      r'the limit of 300~s (wall-clock, per run).  Lang.: comparison of the languages with '
-     r'those of CASAAL by TChecker (Section~\ref{sec:crosstool}): exp, equal languages '
+     r'those of CASAAL by TChecker (Section~\ref{sec:evaluation}, paragraph ``Comparison of languages with CASAAL''): exp, equal languages '
      r'checked on the exported automaton; cmp, checked only on the automaton '
      r'$\mathsf{compile}(f)$ before post-processing and export; ?, no conclusion within '
      r'the limits; --, formulas not equivalent.  Equal sizes do not by themselves imply '
