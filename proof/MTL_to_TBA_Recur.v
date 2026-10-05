@@ -255,6 +255,18 @@ Qed.
 (* ---------------------------------------------------------------------- *)
 (* End to end: the chain of the tool, applied to recur f                   *)
 
+Theorem MTL_to_exported_correct_recur_weak_with :
+  forall (n : nat) (f : mtl) (A : PBuchi (recur f)) (w : timed_word),
+    (forall s : pword (recur f),
+        PBA_accepts A s <-> psat s 0 (weak (T (recur f)))) ->
+    well_formed f ->
+    (msat w 0 f <-> DTA_accepts (export (optimize n (compile_with A))) w).
+Proof.
+  intros n f A w HA Hwf.
+  rewrite <- (recur_correct f Hwf w 0).
+  apply (@MTL_to_exported_correct_weak_with n (recur f) A w HA (recur_well_formed f Hwf)).
+Qed.
+
 Theorem MTL_to_exported_correct0_recur_weak_with :
   forall (n : nat) (f : mtl) (A : PBuchi (recur f)) (w : timed_word),
     (forall s : pword (recur f),
@@ -268,4 +280,5 @@ Proof.
   apply (@MTL_to_exported_correct0_weak_with n (recur f) A w HA (recur_well_formed f Hwf) Hfree).
 Qed.
 
+Print Assumptions MTL_to_exported_correct_recur_weak_with.
 Print Assumptions MTL_to_exported_correct0_recur_weak_with.
