@@ -9,7 +9,8 @@
       <name>L0</name>
     </location>
     <location id="id2" x="200" y="0">
-      <name>L2</name>
+      <name>A2</name>
+      <label kind="invariant">x0 &lt;= 2</label>
     </location>
     <location id="id4" x="400" y="0">
       <name>A4</name>
@@ -27,31 +28,25 @@
     </transition>
     <transition>
       <source ref="id2"/>
-      <target ref="id2"/>
-      <label kind="synchronisation">e?</label>
-      <label kind="assignment">x0 = 0</label>
-    </transition>
-    <transition>
-      <source ref="id2"/>
-      <target ref="id2"/>
-      <label kind="guard">x0 &lt; 2</label>
-      <label kind="synchronisation">other?</label>
-    </transition>
-    <transition>
-      <source ref="id2"/>
-      <target ref="id0"/>
-      <label kind="synchronisation">other?</label>
-      <label kind="assignment">x0 = 0</label>
-    </transition>
-    <transition>
-      <source ref="id2"/>
       <target ref="id4"/>
       <label kind="guard">x0 &lt; 2</label>
       <label kind="synchronisation">e?</label>
     </transition>
     <transition>
+      <source ref="id2"/>
+      <target ref="id2"/>
+      <label kind="guard">x0 &lt; 2</label>
+      <label kind="synchronisation">other?</label>
+    </transition>
+    <transition>
       <source ref="id0"/>
       <target ref="id2"/>
+      <label kind="synchronisation">e?</label>
+      <label kind="assignment">x0 = 0</label>
+    </transition>
+    <transition>
+      <source ref="id0"/>
+      <target ref="id0"/>
       <label kind="synchronisation">e?</label>
       <label kind="assignment">x0 = 0</label>
     </transition>

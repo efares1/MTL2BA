@@ -13,6 +13,12 @@ drawing (Graphviz dot).
       -dot <cmd>   Graphviz command (default: dot)
       -tba         also write <base>_tba.dot (after reset completion) and
                    <base>_opt.dot (after optimization)
+      -noweak      keep the Until of the clauses of upper-bounded hatted
+                   Until; by default it is replaced by a weak until (proved)
+      -check <b>   write <b>_ltl.lbt (T(f) by a second printer) and <b>_ba.hoa
+                   (the automaton built by the reader), to check the
+                   interface with Spot (evaluation/run_interface_check.sh)
+      -stats       print one line of measures (header: -stats-header)
       -v           print the intermediate results
 
 Example:
@@ -24,9 +30,11 @@ Example:
 
 | Step | Code |
 |---|---|
-| parsing, negation normal form, `-init` | prototype (`mtl.ml`, `lexer.mll`, `parser.mly`, `mtl2mtl.ml`) |
+| parsing, `-init` | prototype (`mtl.ml`, `lexer.mll`, `parser.mly`, `mtl2mtl.ml`) |
+| negation normal form | extracted from Coq (`neg`, `neg_correct`) |
 | derivation of the ordinary timed operators | extracted from Coq (`MUle`, ..., `MRgt`) |
 | clocked-LTL translation `T` | extracted from Coq |
+| weak until in the upper-bounded hatted clauses (default) | extracted from Coq (`weak`, `weak_correct`) |
 | LTL to Buchi automaton | Spot, `ltl2tgba -B --small --lbtt=t` |
 | reading of the Spot automaton (literals kept) | `lbtt_read.ml` |
 | relaxation and reset completion | extracted from Coq (`compile_with`) |
@@ -39,7 +47,9 @@ The extracted steps are proved in Coq: for every Buchi automaton `A` that
 accepts exactly the propositional models of `T f`,
 `MTL_to_TBA_correct_with` states that `compile_with A` accepts exactly the
 models of `f`, and `optimize_accepts` and `export_accepts` that the later
-steps preserve the language.  Every atom, including a negated event `!e`, is
+steps preserve the language; `MTL_to_exported_correct0_weak_with` states the
+same for the default chain, where `A` accepts the models of the formula with
+the weak until.  Every atom, including a negated event `!e`, is
 passed to Spot as an independent quoted proposition, as in the hypothesis of
 that theorem.
 

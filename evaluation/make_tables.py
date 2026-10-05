@@ -74,7 +74,7 @@ for fid, desc, _, _ in forms:
                        r'\n\s*(L\d+) -> (L\d+) \[') if ok(o) else '',
                  pairs(os.path.join(HERE, 'casaal_out_x', fid + '.gv'),
                        r'\n\s*([1-9]\d*) -> (\d+)'),
-                 sym.get(fid, {}).get('sym_trans', '') if ok(sym.get(fid, {})) else ''])
+                 g(o, 'sym_trans')])
 with open(os.path.join(HERE, 'results.tsv'), 'w', encoding='utf-8', newline='') as f:
     w = csv.writer(f, delimiter='\t')
     w.writerow(cols)
@@ -193,41 +193,35 @@ for fid, desc, f, _ in forms:
     Fm.append(f'{fid} & {esc(desc)} & \\texttt{{{ff}}}\\\\')
 Fm += [r'\bottomrule', r'\end{tabular}', r'\end{table*}']
 open(os.path.join(HERE, 'formulas_table.tex'), 'w', encoding='utf-8').write('\n'.join(Fm) + '\n')
-# ------------------------------------------------------------ primed configurations
-weak = read('weak_results.tsv')
+# ------------------------------------------------------------ ablation of -weak
+noweak = read('ours_results_noweak.tsv')
 Wt = [r'\begin{table}[t]', r'\centering',
-      r'\caption{Primed configurations (option \texttt{-weak}, proved): the Until of the clauses of upper-bounded '
-      r'hatted Until is replaced by a weak until in the formula given to Spot, which '
-      r'removes the degeneralization of the B\"uchi acceptance (configurations whose '
-      r'formula changes and whose sizes differ).  Spot: states/transitions; Opt.: '
-      r'locations/transitions; Sym.: symbolic transitions of the unprimed and primed '
-      r'configurations ($\mathsf{U}$: unprimed, $\mathsf{W}$: primed); Time: median of '
-      r'five runs of the primed configuration (option \texttt{-weak}), in seconds; CASAAL: states/transitions '
-      r'on the common domain, $^\dagger$ as in Table~\ref{tab:evaluation}.  The export '
-      r'does not change the number of locations.}',
+      r'\caption{Effect of the weak until (default; disabled by the option '
+      r'\texttt{-noweak}), on the configurations whose sizes change.  Spot: states of the '
+      r'automaton returned by Spot; Sym.: symbolic transitions; Time: median of five '
+      r'runs, in seconds; TO: more than 300~s; CASAAL: states/transitions on the common '
+      r'domain, $^\dagger$ as in Table~\ref{tab:evaluation}.  The clocks do not change.}',
       r'\label{tab:weak}', r'\footnotesize', r'\setlength{\tabcolsep}{3pt}',
-      r'\begin{tabular}{@{}lrrrrrrrr@{}}', r'\toprule',
-      r' & \multicolumn{2}{c}{Spot} & \multicolumn{2}{c}{Opt.} & \multicolumn{2}{c}{Sym.} & & \\',
-      r'\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}',
-      r'Id & st & tr & loc & tr & $\mathsf{U}$ & $\mathsf{W}$ & Time & CASAAL\\', r'\midrule']
+      r'\begin{tabular}{@{}lrrrrrrr@{}}', r'\toprule',
+      r' & \multicolumn{3}{c}{\texttt{-noweak}} & \multicolumn{3}{c}{default} & \\',
+      r'\cmidrule(lr){2-4}\cmidrule(lr){5-7}',
+      r'Id & Spot & Sym. & Time & Spot & Sym. & Time & CASAAL\\', r'\midrule']
 for fid, desc, _, _ in forms:
-    wd = weak.get(fid + "'")
-    if not wd:
+    o0 = noweak.get(fid, {})
+    o1 = ours.get(fid, {})
+    same = ok(o0) and ok(o1) and all(o0.get(k) == o1.get(k)
+                                     for k in ('spot_states', 'opt_locs', 'opt_trans', 'sym_trans'))
+    if same or (not ok(o0) and not ok(o1)):
         continue
     d = R[fid]
-    if wd.get('status') == 'ok' and d['status'] == 'ok' and wd['opt_locs'] == d['opt_st'] \
-            and wd['opt_trans'] == d['opt_tr']:
-        continue
     cx = casaal_cell(d).rsplit('/', 1)[0] if casaal_cell(d) != '--' else '--'
     cx = cx.replace(r'$^\dagger$', '')
     mark = r'$^\dagger$' if d['casaal_exact'] == 'no' else ''
-    if wd.get('status') != 'ok':
-        Wt.append(f"{fid}$'$ & \\multicolumn{{7}}{{c}}{{timeout (limit 300~s)}} & {cx}{mark}\\\\")
-        continue
-    su = d['sym_tr'] if d['status'] == 'ok' else 'timeout'
-    Wt.append(f"{fid}$'$ & {wd['spot_states']} & {wd['spot_trans']} & {wd['opt_locs']} & "
-              f"{wd['opt_trans']} & {su} & {wd['sym_trans']} & "
-              f"{float(wd['total_s_med']):.2f} & {cx}{mark}\\\\")
+    def cells(o):
+        if not ok(o):
+            return r'\multicolumn{3}{c}{TO}'
+        return f"{o['spot_states']} & {o['sym_trans']} & {float(o['total_s_med']):.2f}"
+    Wt.append(f"{fid} & {cells(o0)} & {cells(o1)} & {cx}{mark}\\\\")
 Wt += [r'\bottomrule', r'\end{tabular}', r'\end{table}']
 open(os.path.join(HERE, 'weak_table.tex'), 'w', encoding='utf-8').write('\n'.join(Wt) + '\n')
 print('tables written')

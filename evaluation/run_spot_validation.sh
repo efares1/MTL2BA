@@ -6,9 +6,12 @@
 #      T(f) given to Spot and the LBTT automaton A returned by Spot;
 #   2. an independent translator, ltl2ba (Gastin and Oddoux), translates T(f),
 #      after its atoms are renamed p0, p1, ... (ltlfilt --relabel=pnn);
-#   3. autfilt checks that A, with the same renaming, and the automaton of
-#      ltl2ba accept the same propositional words (--equivalent-to): this checks
-#      the back-end contract  PBA_accepts A s <-> s,0 |= T(f)  for the run;
+#   3. the back-end contract  PBA_accepts A s <-> s,0 |= T(f)  is checked for
+#      the run by two emptiness checks of autfilt, with the same renaming:
+#      A x ltl2ba(!T(f)) is empty (A accepts only models of T(f)), and
+#      complement(A) x ltl2ba(T(f)) is empty (A accepts every model); only the
+#      small automaton of Spot is complemented (autfilt --product, --is-empty,
+#      --complement; a check that fails or exceeds the limit is reported as such);
 #   4. the numbers of states and transitions that the reader of the tool reports
 #      are compared with those of autfilt on the LBTT file.
 # Requires ltl2ba 1.3 in $LTL2BA (default ~/tools/ltl2ba-big/ltl2ba), compiled
@@ -70,14 +73,22 @@ PY
   read ss se < <(autfilt --stats='%s %e' "$W/s.hoa")
   t0=$(date +%s.%N)
   ltlfilt --spin -F "$W/r.ltl" > "$W/r.spin"
-  timeout "$LIMIT" "$LTL2BA" -F "$W/r.spin" > "$W/b.never" 2>/dev/null
-  case $? in
-    0) bs=$(autfilt --stats='%s' "$W/b.never")
-       timeout "$EQLIMIT" autfilt -q "$W/r.hoa" --equivalent-to="$W/b.never"
-       case $? in 0) eq=yes ;; 124) eq="equivalence timeout" ;; *) eq=NO ;; esac ;;
-    124) bs=""; eq="ltl2ba timeout" ;;
-    *) bs=""; eq="ltl2ba error" ;;
-  esac
+  ltlfilt --negate --spin -F "$W/r.ltl" > "$W/n.spin"
+  timeout "$LIMIT" "$LTL2BA" -F "$W/r.spin" > "$W/b.never" 2>/dev/null; c1=$?
+  timeout "$LIMIT" "$LTL2BA" -F "$W/n.spin" > "$W/n.never" 2>/dev/null; c2=$?
+  if [ $c1 -eq 124 ] || [ $c2 -eq 124 ]; then bs=""; eq="ltl2ba timeout"
+  elif [ $c1 -ne 0 ] || [ $c2 -ne 0 ]; then bs=""; eq="ltl2ba error"
+  else
+    bs=$(autfilt --stats='%s' "$W/b.never")
+    # A accepts only models: A x ltl2ba(!T(f)) is empty
+    timeout "$EQLIMIT" bash -c 'autfilt "$1" --product="$2" | autfilt -q --is-empty' _ "$W/r.hoa" "$W/n.never"; e1=$?
+    # A accepts every model: complement(A) x ltl2ba(T(f)) is empty
+    timeout "$EQLIMIT" bash -c 'autfilt --complement "$1" | autfilt --product="$2" | autfilt -q --is-empty' _ "$W/r.hoa" "$W/b.never"; e2=$?
+    if [ $e1 -eq 0 ] && [ $e2 -eq 0 ]; then eq=yes
+    elif [ $e1 -eq 124 ] || [ $e2 -eq 124 ]; then eq="check timeout"
+    elif [ $e1 -eq 1 ] || [ $e2 -eq 1 ]; then eq=NO
+    else eq="check error"; fi
+  fi
   dt=$(python3 -c "print(f'{$(date +%s.%N)-$t0:.2f}')")
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$natoms" "$ss" "$se" "$rs" "$rt" "$bs" "$eq" "$dt" >> "$OUT"
   echo "$id: $eq"
