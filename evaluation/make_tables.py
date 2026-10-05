@@ -95,6 +95,40 @@ def casaal_cell(d):
     return f"{d['casaal_x_st']}/{d['casaal_x_tr']}/{d['casaal_x_clk']}{mark}"
 
 
+def lang_status():
+    """comparison of languages with CASAAL by TChecker (tck_equivalence.tsv on
+    the exported automaton, tck_compiled.tsv on compile(f)): exp, cmp, or ?"""
+    def rows(fn):
+        path = os.path.join(HERE, fn)
+        if not os.path.exists(path):
+            return {}
+        out = {}
+        for line in open(path, encoding='utf-8').read().splitlines()[1:]:
+            c = line.split('	')
+            out[c[0]] = c[1:5]
+        return out
+    expected = ['empty', 'empty', 'empty', 'NONEMPTY']
+    main, comp = rows('tck_equivalence.tsv'), rows('tck_compiled.tsv')
+    st = {}
+    for fid in set(main) | set(comp):
+        if main.get(fid) == expected:
+            st[fid] = 'exp'
+        elif comp.get(fid) == expected:
+            st[fid] = 'cmp'
+        else:
+            st[fid] = '?'
+    return st
+
+
+LANG = lang_status()
+
+
+def lang_cell(fid, d):
+    if d.get('casaal_exact') == 'no':
+        return '--'
+    return LANG.get(fid, '?')
+
+
 # ------------------------------------------------------------ main table
 L = [r'\begin{table*}[t]', r'\centering',
      r'\caption{Evaluation of \texttt{mtl2tba} and comparison with CASAAL on the '
@@ -112,11 +146,16 @@ L = [r'\begin{table*}[t]', r'\centering',
      r'operator); $\ddagger$: degenerate formula, equivalent to $\Box\neg p$ or '
      r'$\Box\neg e$ with one event per position.  CASAAL time: wall-clock time, '
      r'median of five runs, in seconds, including the start of the process.  TO: the chain exceeds '
-     r'the limit of 300~s (wall-clock, per run).  Formulas: Table~\ref{tab:formulas} of the '
+     r'the limit of 300~s (wall-clock, per run).  Lang.: comparison of the languages with '
+     r'those of CASAAL by TChecker (Section~\ref{sec:crosstool}): exp, equal languages '
+     r'checked on the exported automaton; cmp, checked only on the automaton '
+     r'$\mathsf{compile}(f)$ before post-processing and export; ?, no conclusion within '
+     r'the limits; --, formulas not equivalent.  Equal sizes do not by themselves imply '
+     r'equal languages.  Formulas: Table~\ref{tab:formulas} of the '
      r'supplementary material.}',
      r'\label{tab:evaluation}', r'\small',
      r'\setlength{\tabcolsep}{4.5pt}',
-     r'\begin{tabular}{@{}lrrrrrrrrrrrrrrr@{}}', r'\toprule',
+     r'\begin{tabular}{@{}lrrrrrrrrrrrrrrrc@{}}', r'\toprule',
      r' & & \multicolumn{2}{c}{Spot} & \multicolumn{3}{c}{Opt.} & '
      r'\multicolumn{5}{c}{Export} & & & \multicolumn{2}{c}{CASAAL}\\',
      r'\cmidrule(lr){3-4}\cmidrule(lr){5-7}\cmidrule(lr){8-12}\cmidrule(lr){15-16}',
@@ -136,12 +175,12 @@ for fid, desc, _, _ in forms:
     if d['status'] != 'ok':
         nx = d['clocks_f'] or (fid[1:] if fid[0] in 'RN' else '')
         L.append(f"{name} & {nx} & \\multicolumn{{12}}{{c}}{{TO}} & "
-                 f"{casaal_cell(d)} & {casaal_time(d)}\\\\")
+                 f"{casaal_cell(d)} & {casaal_time(d)} & {lang_cell(fid, d)}\\\\")
         continue
     L.append(f"{name} & {d['clocks_f']} & {d['spot_st']} & {d['spot_tr']} & {d['opt_st']} & "
              f"{d['opt_tr']} & {d['opt_clk']} & {d['exp_st']} & {d['exp_tr']} & "
              f"{d['exp_clk']} & {d['exp_inv']} & {d['exp_diff']} & {d['sym_tr']} & "
-             f"{float(d['total_s']):.2f} & {casaal_cell(d)} & {casaal_time(d)}\\\\")
+             f"{float(d['total_s']):.2f} & {casaal_cell(d)} & {casaal_time(d)} & {lang_cell(fid, d)}\\\\")
 L += [r'\bottomrule', r'\end{tabular}', r'\end{table*}']
 open(os.path.join(HERE, 'results_table.tex'), 'w', encoding='utf-8').write('\n'.join(L) + '\n')
 
