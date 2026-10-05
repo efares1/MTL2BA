@@ -26,8 +26,8 @@ PROOF = EncodingCorrect_Shared_Clock_Derived_Strict_Direct_Proof
 VFILES = $(CORE).v $(PROOF).v MTL_to_TBA_Invariants.v \
          MTL_to_TBA_Optimizations.v MTL_to_TBA_Export.v \
          MTL_to_TBA_Initialization.v MTL_to_TBA_Simplify.v MTL_to_TBA_Symbolic.v \
-         MTL_to_TBA_Negation.v MTL_to_TBA_Weak.v Extract_Optim.v
-ROOTS = optimized optimize export optimize_export t ltl_atoms compile_with init_free ltl_simp symbolic neg weak \
+         MTL_to_TBA_Negation.v MTL_to_TBA_Weak.v MTL_to_TBA_Recur.v Extract_Optim.v
+ROOTS = optimized optimize export optimize_export t ltl_atoms compile_with init_free ltl_simp symbolic neg weak recur \
         timed_subformulas mUle mUlt mUge mUgt mRle mRlt mRge mRgt
 OPTIM = $(TOOLDIR)/src/optim.ml
 TOOLFILES = $(addprefix $(TOOLDIR)/, dune-project src/dune src/mtl.ml src/lexer.mll \
@@ -54,10 +54,11 @@ MTL_to_TBA_Simplify.vo: MTL_to_TBA_Initialization.vo
 MTL_to_TBA_Symbolic.vo: MTL_to_TBA_Initialization.vo
 MTL_to_TBA_Negation.vo: $(CORE).vo
 MTL_to_TBA_Weak.vo: MTL_to_TBA_Initialization.vo
+MTL_to_TBA_Recur.vo: MTL_to_TBA_Weak.vo
 
 # Extraction, removal of the unused real-number library code, and
 # installation of the extracted module in the tool.
-$(OPTIM): Extract_Optim.v MTL_to_TBA_Simplify.vo MTL_to_TBA_Symbolic.vo MTL_to_TBA_Negation.vo MTL_to_TBA_Weak.vo tools/prune_extraction.py
+$(OPTIM): Extract_Optim.v MTL_to_TBA_Simplify.vo MTL_to_TBA_Symbolic.vo MTL_to_TBA_Negation.vo MTL_to_TBA_Weak.vo MTL_to_TBA_Recur.vo tools/prune_extraction.py
 	$(COQC) $(COQFLAGS) Extract_Optim.v
 	rm -f optim.mli
 	$(PYTHON) tools/prune_extraction.py optim.ml $(ROOTS)

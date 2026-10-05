@@ -1,4 +1,5 @@
 #!/bin/bash
+# ONLY="F8 R1": only these configurations; the rows go to <file>.only (merge_rows.py)
 # Check of the trusted interface between the extracted code and Spot, on
 # every configuration of formulas.tsv (option -check of mtl2tba):
 #   1. printing of T(f): Spot reads the infix text given to ltl2tgba and the
@@ -14,9 +15,11 @@ LIMIT=${LIMIT:-300}
 EQLIMIT=${EQLIMIT:-600}
 W=$(mktemp -d)
 OUT="$HERE/interface_check.tsv"
+[ -n "$ONLY" ] && OUT="$OUT.only"
 printf 'id\tprinter\treader\n' > "$OUT"
 chmod +x "$HERE/spot_tee.sh"
 grep -v '^#' "$HERE/formulas.tsv" | while IFS=$'\t' read -r id desc ours cas; do
+  [ -n "$ONLY" ] && ! [[ " $ONLY " == *" $id "* ]] && continue
   [ -z "$id" ] && continue
   rm -f "$W"/*
   (cd "$W" && SPOT_SAVE="$W/s" timeout "$LIMIT" "$EXE" -nopdf -check "$W/c" \

@@ -105,6 +105,12 @@
     the automaton of the negation of [](p -> <> q) composed with a system that
     answers within 4 time units (empty product) and with one that may stay
     busy forever (accepting cycle found) (`case_study/liveness_results.txt`).
+- Rewriting of lower bounds under []<> and <>[] (default since v1.7, option
+  `-norecur`; proved: `MTL_to_exported_correct0_recur_weak_with`): among the
+  benchmark configurations, it changes only F8.  `rerun_f8.sh` re-runs the
+  evaluation on F8 and on the random formulas whose automaton changes
+  (`random_changed_by_recur.txt`); the scripts accept `ONLY="F8 ..."`, which
+  writes `<file>.only`, merged into the result files by `merge_rows.py`.
 - `setup_wsl.sh`: one-time installation of Spot, OCaml, dune, and menhir in
   WSL Ubuntu.
 

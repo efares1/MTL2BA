@@ -1,4 +1,5 @@
 #!/bin/bash
+# ONLY="F8 R1": only these configurations; the rows go to <file>.only (merge_rows.py)
 # Full evaluation of mtl2tba: sizes, repeated timings, peak memory, stage
 # times, and the effect of the Spot options.
 # Run in WSL Ubuntu (Spot, dune, menhir installed):
@@ -16,6 +17,7 @@ REPS=${REPS:-5}
 LIMIT=${LIMIT:-300}
 OPTS=${OPTS:-}      # extra options of the tool
 SUFFIX=${SUFFIX:-}  # suffix of the result files
+[ -n "$ONLY" ] && SUFFIX="$SUFFIX.only"
 rm -rf "$B" && cp -r "$TOOL" "$B" && (cd "$B" && rm -rf _build && dune build 2>&1 | head -20)
 EXE="$B/_build/default/src/mtl2tba.exe"
 mkdir -p "$HERE/out"
@@ -46,6 +48,7 @@ HDR=$("$EXE" -stats-header)
 printf 'id\trun\tstatus\tmem_kb\t%s\n' "$HDR" > "$HERE/ours_runs$SUFFIX.tsv"
 printf 'id\tstatus\t%s\n' "$HDR" > "$HERE/spot_det$SUFFIX.tsv"
 grep -v '^#' "$HERE/formulas.tsv" | while IFS=$'\t' read -r id desc ours cas; do
+  [ -n "$ONLY" ] && ! [[ " $ONLY " == *" $id "* ]] && continue
   [ -z "$id" ] && continue
   for r in $(seq 1 "$REPS"); do
     line=$(cd "$HERE/out" && /usr/bin/time -f '%M' -o /tmp/mem.txt \

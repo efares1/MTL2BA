@@ -6,7 +6,9 @@
      1. parsing                                    (prototype: lexer, parser, Mtl)
         negation normal form                       (extracted from Coq: neg)
      2. derivation of the ordinary timed operators (extracted from Coq: MUle, ...)
+        lower bounds under []<> and <>[] removed   (extracted from Coq: recur)
      3. clocked-LTL translation T                  (extracted from Coq)
+        weak until in upper-bounded hatted clauses (extracted from Coq: weak)
      4. LTL -> Buchi automaton                     (Spot, ltl2tgba)
      5. relaxation and reset completion            (extracted from Coq: compile_with)
      6. optimization, iterated to a fixpoint       (extracted from Coq: optimize)
@@ -24,6 +26,7 @@ let with_init = ref false
 let rounds = ref 50
 let verbose = ref false
 let dump_tba = ref false
+let recur_on = ref true
 let formula = ref ""
 let stats = ref false
 let pdf = ref true
@@ -43,6 +46,7 @@ let speclist = [
   ("-o", Arg.Set_string out, "<base> output files <base>.xml and <base>.dot (default: out)");
   ("-simp", Arg.Set simp, " simplify the trivial operands of the clocked-LTL formula before Spot (proved; Spot does it anyway)");
   ("-noweak", Arg.Clear weak_until, " keep the Until of the clauses of upper-bounded hatted Until; by default it is replaced by a weak until (proved: MTL_to_exported_correct_weak_with)");
+  ("-norecur", Arg.Clear recur_on, " keep the lower bounds under []<> and <>[]; by default []<>[>=d] p is rewritten into []<> p and <>[][>=d] p into <>[] p (and likewise with >), which holds under time divergence (proved: MTL_to_exported_correct0_recur_weak_with)");
   ("-weak", Arg.Set weak_until, " replace the Until of the clauses of upper-bounded hatted Until by a weak until (default)");
   ("-init", Arg.Set with_init, " add an initialization event _init_ fixing the time origin");
   ("-n", Arg.Set_int rounds, "<n> maximal number of optimization rounds (default: 50)");
@@ -292,6 +296,9 @@ let () =
   let root = conv f in
   if not (well_formed root) then
     fail "the formula is not well formed (bounds [<0] and [>0] are not allowed)";
+  (* proved rewriting of the lower bounds under []<> and <>[]
+     (Coq: recur_correct, MTL_to_exported_correct0_recur_weak_with) *)
+  let root = if !recur_on then recur root else root in
   let clocks = clocks_of root in
   let nm a = atom_name clocks a in
   log "clocks: %s" (String.concat ", " (List.mapi (fun i _ -> "x" ^ string_of_int i) clocks));

@@ -2302,6 +2302,69 @@ let rec weak root f = match f with
 | LRelease (p, q0) -> LRelease ((weak root p), (weak root q0))
 | _ -> f
 
+(** val is_true : mtl -> bool **)
+
+let is_true = function
+| MTrue -> true
+| _ -> false
+
+(** val is_false : mtl -> bool **)
+
+let is_false = function
+| MFalse -> true
+| _ -> false
+
+(** val rw1 : mtl -> mtl **)
+
+let rw1 g = match g with
+| MU (a, b) ->
+  if is_true a
+  then (match b with
+        | MOr (c, e) ->
+          if is_false c
+          then (match e with
+                | MRhatGe (_, x, p) ->
+                  if is_false x then MU (MTrue, (MR (MFalse, p))) else g
+                | MRhatGt (_, x, p) ->
+                  if is_false x then MU (MTrue, (MR (MFalse, p))) else g
+                | _ -> g)
+          else g
+        | _ -> g)
+  else g
+| MR (a, b) ->
+  if is_false a
+  then (match b with
+        | MAnd (c, e) ->
+          if is_true c
+          then (match e with
+                | MUhatGe (_, x, p) ->
+                  if is_true x then MR (MFalse, (MU (MTrue, p))) else g
+                | MUhatGt (_, x, p) ->
+                  if is_true x then MR (MFalse, (MU (MTrue, p))) else g
+                | _ -> g)
+          else g
+        | _ -> g)
+  else g
+| _ -> g
+
+(** val recur : mtl -> mtl **)
+
+let rec recur = function
+| MAnd (p, q0) -> rw1 (MAnd ((recur p), (recur q0)))
+| MOr (p, q0) -> rw1 (MOr ((recur p), (recur q0)))
+| MNext p -> rw1 (MNext (recur p))
+| MU (p, q0) -> rw1 (MU ((recur p), (recur q0)))
+| MR (p, q0) -> rw1 (MR ((recur p), (recur q0)))
+| MUhatLe (d, p, q0) -> rw1 (MUhatLe (d, (recur p), (recur q0)))
+| MUhatGe (d, p, q0) -> rw1 (MUhatGe (d, (recur p), (recur q0)))
+| MRhatLe (d, p, q0) -> rw1 (MRhatLe (d, (recur p), (recur q0)))
+| MRhatGe (d, p, q0) -> rw1 (MRhatGe (d, (recur p), (recur q0)))
+| MUhatLt (d, p, q0) -> rw1 (MUhatLt (d, (recur p), (recur q0)))
+| MUhatGt (d, p, q0) -> rw1 (MUhatGt (d, (recur p), (recur q0)))
+| MRhatLt (d, p, q0) -> rw1 (MRhatLt (d, (recur p), (recur q0)))
+| MRhatGt (d, p, q0) -> rw1 (MRhatGt (d, (recur p), (recur q0)))
+| x -> x
+
 (** val optimize_export : mtl -> int -> tBA -> dTA **)
 
 let optimize_export root n a =

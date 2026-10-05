@@ -1,4 +1,5 @@
 #!/bin/bash
+# ONLY="F8 R1": only these configurations; the rows go to <file>.only (merge_rows.py)
 # Cross-tool check of the languages of mtl2tba and CASAAL, with the timed
 # Buchi emptiness checker of TChecker (tck-liveness, couvscc), on every
 # configuration whose CASAAL encoding is exact.  For a formula phi:
@@ -18,6 +19,7 @@ TCK=~/local/bin/tck-liveness
 LIMIT=${LIMIT:-600}
 W=$(mktemp -d)
 OUT="$HERE/tck_equivalence.tsv"
+[ -n "$ONLY" ] && OUT="$OUT.only"
 printf 'id\tP1\tP2\tS\tC\n' > "$OUT"
 check() {  # expected empty -> "empty" / "NONEMPTY"; or raw for the control
   lab=$(python3 "$HERE/tck_product.py" "$W/m.tck" "$EVENTS" "$@") || { echo "convert error"; return; }
@@ -29,6 +31,7 @@ check() {  # expected empty -> "empty" / "NONEMPTY"; or raw for the control
   esac
 }
 grep -v '^#' "$HERE/formulas.tsv" | while IFS=$'\t' read -r id desc ours cas; do
+  [ -n "$ONLY" ] && ! [[ " $ONLY " == *" $id "* ]] && continue
   [ -z "$id" ] && continue
   case "$cas" in "~"*|"-") continue;; esac
   [ -f "$HERE/casaal_out_x/$id.gv" ] && [ -f "$HERE/casaal_out_neg/$id.gv" ] || continue
