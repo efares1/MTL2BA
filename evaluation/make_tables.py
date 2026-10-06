@@ -232,7 +232,7 @@ for fid, desc, f, _ in forms:
     Fm.append(f'{fid} & {esc(desc)} & \\texttt{{{ff}}}\\\\')
 Fm += [r'\bottomrule', r'\end{tabular}', r'\end{table*}']
 open(os.path.join(HERE, 'formulas_table.tex'), 'w', encoding='utf-8').write('\n'.join(Fm) + '\n')
-# ------------------------------------------------------------ ablation of -weak
+# ------------------------------------------------------------ ablation: -noweak (measurement only)
 noweak = read('ours_results_noweak.tsv')
 Wt = [r'\begin{table}[t]', r'\centering',
       r'\caption{Effect of the weak until (default; disabled by the option '

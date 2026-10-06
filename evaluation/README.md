@@ -32,13 +32,15 @@
   finite timed words, with clocks starting at 0 as in UPPAAL, and checks that
   the accepting sink (violation) is reached exactly when expected.  These
   checks validate the implementation; they do not replace the proof.
-- Weak until: by default, the tool replaces the Until of the clauses of
-  upper-bounded hatted Until by a weak until (proved:
-  `MTL_to_exported_correct0_weak_with`); the option `-noweak` disables it.
-  `make_tables.py` compares `ours_results_noweak.tsv` with
-  `ours_results.tsv` (`weak_table.tex`).  `run_weak_eval.sh` and
-  `spot_weak.py` are the earlier experiments with the option `-weak`, kept
-  for reference (`weak_results.tsv`, `weak_results_regex.tsv`).
+- Weak until: the clauses of upper-bounded hatted Until use a weak until,
+  as part of the translation (proved: `weak_correct`, and the end-to-end
+  theorems `MTL_to_exported_correct_recur_weak_with` and
+  `MTL_to_exported_correct0_recur_weak_with`).  The option `-noweak`, used
+  for measurements only, keeps a strong Until; `OPTS=-noweak
+  SUFFIX=_noweak bash run_full_eval.sh` produces `ours_results_noweak.tsv`,
+  which `make_tables.py` compares with `ours_results.tsv`
+  (`weak_table.tex`).  `spot_weak.py` (text-level rewriting) is used by
+  `run_acceptance_eval.sh`.
 - `run_spot_validation.sh`: translation validation of the Spot step, the only
   hypothesis of the end-to-end theorem.  The tool runs unchanged, with
   `-spot spot_tee.sh`, a wrapper that calls `ltl2tgba` with the arguments of

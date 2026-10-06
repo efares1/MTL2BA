@@ -45,9 +45,8 @@ let stats_header = String.concat "	"
 let speclist = [
   ("-o", Arg.Set_string out, "<base> output files <base>.xml and <base>.dot (default: out)");
   ("-simp", Arg.Set simp, " simplify the trivial operands of the clocked-LTL formula before Spot (proved; Spot does it anyway)");
-  ("-noweak", Arg.Clear weak_until, " keep the Until of the clauses of upper-bounded hatted Until; by default it is replaced by a weak until (proved: MTL_to_exported_correct_weak_with)");
+  ("-noweak", Arg.Clear weak_until, " for measurements only: keep a strong Until in the clauses of upper-bounded hatted Until instead of the weak until of the translation");
   ("-norecur", Arg.Clear recur_on, " keep the lower bounds under []<> and <>[]; by default []<>[>=d] p is rewritten into []<> p and <>[][>=d] p into <>[] p (and likewise with >), which holds under time divergence (proved: MTL_to_exported_correct0_recur_weak_with)");
-  ("-weak", Arg.Set weak_until, " replace the Until of the clauses of upper-bounded hatted Until by a weak until (default)");
   ("-init", Arg.Set with_init, " add an initialization event _init_ fixing the time origin");
   ("-n", Arg.Set_int rounds, "<n> maximal number of optimization rounds (default: 50)");
   ("-spot", Arg.Set_string spot, "<cmd> LTL-to-Buchi command (default: ltl2tgba)");

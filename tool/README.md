@@ -16,8 +16,9 @@ drawing (Graphviz dot).
       -norecur     keep the lower bounds under []<> and <>[]; by default
                    []<>[>=d] p becomes []<> p and <>[][>=d] p becomes <>[] p
                    (also with >), valid under time divergence (proved)
-      -noweak      keep the Until of the clauses of upper-bounded hatted
-                   Until; by default it is replaced by a weak until (proved)
+      -noweak      for measurements only: keep a strong Until in the
+                   clauses of upper-bounded hatted Until instead of the
+                   weak until of the translation
       -check <b>   write <b>_ltl.lbt (T(f) by a second printer) and <b>_ba.hoa
                    (the automaton built by the reader), to check the
                    interface with Spot (evaluation/run_interface_check.sh)
@@ -38,7 +39,7 @@ Example:
 | derivation of the ordinary timed operators | extracted from Coq (`MUle`, ..., `MRgt`) |
 | lower bounds under `[]<>` and `<>[]` removed (default) | extracted from Coq (`recur`, `recur_correct`) |
 | clocked-LTL translation `T` | extracted from Coq |
-| weak until in the upper-bounded hatted clauses (default) | extracted from Coq (`weak`, `weak_correct`) |
+| weak until in the clauses of upper-bounded hatted Until (part of the translation) | extracted from Coq (`weak`, `weak_correct`) |
 | LTL to Buchi automaton | Spot, `ltl2tgba -B --small --lbtt=t` |
 | reading of the Spot automaton (literals kept) | `lbtt_read.ml` |
 | relaxation and reset completion | extracted from Coq (`compile_with`) |
