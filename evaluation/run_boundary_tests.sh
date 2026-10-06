@@ -3,7 +3,7 @@
 # or run_tool_eval.sh has built the tool), then check them with
 #     python3 check_boundaries.py boundary_out
 HERE="$(cd "$(dirname "$0")" && pwd)"
-EXE=~/mtl2tba_eval/_build/default/src/mtl2tba.exe
+EXE=${EXE:-~/mtl2tba_eval/_build/default/src/mtl2tba.exe}
 mkdir -p "$HERE/boundary_out"
 grep -v '^#' "$HERE/boundary_tests.tsv" | while IFS=$'\t' read -r id req neg word exp; do
   [ -z "$id" ] && continue
