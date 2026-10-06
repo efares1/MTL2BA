@@ -1,26 +1,97 @@
 # MTL2TBA
 
-Verified translation of MTL(0,inf) into timed Büchi automata, companion of
-the paper *A Mechanically Verified Translation of MTL(0,inf) into Timed
-Büchi Automata* (E. Fares, J.-P. Bodeveix).
+Mechanically verified translation of MTL(0,inf) into timed Büchi automata,
+companion of the paper *A Mechanically Verified Translation of MTL(0,inf)
+into Timed Büchi Automata* (E. Fares, J.-P. Bodeveix, H. Al-Aqrabi,
+A. Salami).
+
+## Main result
+
+For every well-formed MTL(0,inf) formula `f`, every Büchi automaton `A` that
+accepts exactly the propositional models of the formula given to the
+LTL-to-Büchi translator, every number `n` of optimization rounds, and every
+infinite timed word with one event per position and strictly increasing,
+divergent timestamps, the exported automaton
+`export (optimize n (compile_with A))` accepts the word if and only if the
+word satisfies `f`.  It uses at most one clock per distinct primitive timed
+subformula of `f`, shared by all its overlapping activations.  Acceptance is
+existential over the initial clock values, and conventional (clocks starting
+at 0, as in UPPAAL) when the verified check `init_free` succeeds.
+
+Coq theorems: `MTL_to_exported_correct_recur_weak_with` and
+`MTL_to_exported_correct0_recur_weak_with` (`proof/MTL_to_TBA_Recur.v`).
+The development contains no `Admitted`, `admit`, `Parameter`, or
+`Hypothesis`; the correctness of the LTL-to-Büchi translator is a hypothesis
+of these theorems, which depend only on four axioms of Coq's standard library
+(`sig_forall_dec`, `functional_extensionality_dep`,
+`constructive_definite_description`, `classic`).  The single `Axiom` of the
+development, `LTL_TO_BUCHI_CORRECT`, is used only by the variants without the
+suffix `_with`.
+
+The parser, the transformation of the option `-init`, the interface with
+Spot, the driver of the optimization rounds, the floating-point realization
+of the bounds, and the printers are trusted (Fig. 1 and Table 1 of the
+paper).
+
+## Reproduce in one command
+
+```
+bash reproduce.sh                       # coqc, dune, menhir, ltl2tgba on PATH
+COQC=/path/to/coqc bash reproduce.sh    # another Coq/Rocq binary
+```
+
+The script (about 1.5 minutes on a laptop):
+
+1. compiles the Coq development and extracts the code of the tool
+   (`proof/`, log in `proof/build.log`);
+2. audits the development (`proof/tools/audit.py`: no `Admitted`, `admit`,
+   `Abort`, `Parameter`, `Hypothesis`, or `Conjecture` outside comments, and
+   the list of the `Axiom` declarations);
+3. prints the assumptions of the two main theorems (`Print Assumptions`);
+4. builds the tool `mtl2tba`;
+5. translates the examples of the paper (sporadicity, running example,
+   bounded response);
+6. runs the 18 boundary and overlap implementation checks
+   (`evaluation/run_boundary_tests.sh`).
+
+## Versions used for the paper
+
+| Software | Version | Needed for |
+|---|---|---|
+| Rocq (Coq) | 9.0.1 (Rocq Platform 2025.08) | the proofs and the extraction |
+| OCaml | 5.4.0 | the tool |
+| dune | 3.20.2 | the tool |
+| menhir | 20250912 | the tool (parser) |
+| Spot (`ltl2tgba`, `autfilt`) | 2.16 | the tool, the validation |
+| Python | 3.14 | the audit, the evaluation scripts |
+| Graphviz (`dot`) | 14.1.2 | optional: PDF drawings |
+| ltl2ba | 1.3, with enlarged buffers | the validation of Spot's output |
+| TChecker | 0.8 | the comparison of languages, the liveness use |
+| UPPAAL | 5.0.0 | the case study |
+| CASAAL | Windows executable | the comparison |
+
+The measurements were made under Ubuntu 26.04 (WSL 2) on an Intel Core
+i7-8650U with 11.7 GB of memory (`evaluation/machine.txt`).
+
+## Folders
 
 | Folder | Content |
 |---|---|
-| `proof/` | Coq development: the encoding, its composition with the LTL-to-Büchi translator, relaxation and reset completion, and the post-processing toward UPPAAL, with their correctness proofs; extraction of the code of the tool |
-| `tool/` | `mtl2tba`: from an MTL(0,inf) formula to an UPPAAL model (`.xml`) and its drawing (`.dot`, `.pdf`); `examples/` contains the output for Examples 1 and 3 of the paper and for the sporadicity requirement |
-| `evaluation/` | the 23 benchmark formulas, the scripts, and the results of the evaluation (comparison with CASAAL) |
+| `proof/` | Coq development (12 files): the encoding, its composition with the LTL-to-Büchi translator, relaxation and reset completion, the post-processing toward UPPAAL, and their correctness proofs; extraction of the code of the tool (`proof/README_proof.md`) |
+| `tool/` | `mtl2tba`: from an MTL(0,inf) formula to an UPPAAL model (`.xml`) and its drawing (`.dot`, `.pdf`) (`tool/README.md`) |
+| `evaluation/` | the 31 benchmark configurations, the scripts, and the results: comparison with CASAAL, validation of Spot's output, interface checks, comparison of languages with TChecker, random formulas, case study (`evaluation/README.md`) |
 
 ## Quick start
 
 ```
-cd tool && dune build
-_build/default/src/mtl2tba.exe -o sporadic '[](e -> ^[][<=2] !e)'
+cd proof && make                 # proofs and extraction (Rocq 9)
+make tool                        # builds ../tool/_build/default/src/mtl2tba.exe
+../tool/_build/default/src/mtl2tba.exe -o sporadic '[](e -> ^[][<2] !e)'
 ```
 
 Every step of `mtl2tba` except parsing, the call to Spot, the reading of its
-output, and printing is OCaml code extracted from the Coq development
-(`tool/src/optim.ml`, regenerated by `make` in `proof/`).
-
-Requirements: OCaml with dune and menhir, Spot (`ltl2tgba`), Graphviz
-(`dot`); Rocq 9 and Python 3 to recompile the proofs and regenerate the
-extracted code.
+output, the driver of the optimization rounds, and printing is OCaml code
+extracted from the Coq development (`tool/src/optim.ml`, regenerated by
+`make` in `proof/`).  The option `-noweak`, used only for measurements,
+keeps a strong Until in the clauses of upper-bounded hatted Until instead of
+the weak until of the translation.
